@@ -49,7 +49,7 @@ class Mensageiro {
 		*/
 		void enviarMensagem(const Address destino, const Dados msg) {
 			const Protocol prot = 1; // Porque o protocol é 1?
-			nic->send(destino, prot, (void*) &msg, sizeof msg);
+			nic->send(destino, prot, &msg, sizeof msg);
 		}
 		
 		/*!
