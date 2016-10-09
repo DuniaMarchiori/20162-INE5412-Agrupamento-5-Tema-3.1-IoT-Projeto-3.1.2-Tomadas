@@ -10,7 +10,7 @@ typedef NIC::Protocol Protocol;
 
 //!  Struct Dados
 /*!
-	Agrupamento dos dados que são transmitidos entre as placas.
+	Agrupamento dos dados que serão transmitidos e recebidos pela placa.
 */
 struct Dados {
 	Address remetente; /*!< Endereço da tomada rementente da mensagem */
