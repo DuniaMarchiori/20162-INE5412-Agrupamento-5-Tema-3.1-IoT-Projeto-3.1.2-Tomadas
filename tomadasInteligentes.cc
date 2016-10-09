@@ -48,8 +48,8 @@ class Mensageiro {
 			\param msg é a mensagem que será enviada.
 		*/
 		void enviarMensagem(const Address destino, const Dados msg) {
-			const Protocol prot = 1;
-			nic->send(destino, prot, (void*) &msg, sizeof msg); // Protocol é 1, o que isso significa? Não sei, tava no send_recieve.cc
+			const Protocol prot = 1; // Porque o protocol é 1?
+			nic->send(destino, prot, (void*) &msg, sizeof msg);
 		}
 		
 		/*!
@@ -68,7 +68,7 @@ class Mensageiro {
 				msg.prioridade = -1;
 			}
 			
-			return msg; // Quero mesmo retornar só a msg?
+			return msg; // Retornar só a msg mesmo?
 		}
 		
 		/*!
