@@ -13,9 +13,9 @@ typedef NIC::Protocol Protocol;
 	Agrupamento dos dados que serão transmitidos e recebidos pela placa.
 */
 struct Dados {
-	Address remetente; /*!< Endereço da tomada rementente da mensagem */
-    float consumoPrevisto; /*!< Corresponde ao consumo previsto da tomada */
-    int prioridade; /*!< Corresponde à prioridade da tomada */
+    Address remetente; /*!< Endereço da tomada remetente da mensagem. */
+    float consumoPrevisto; /*!< Corresponde ao consumo previsto da tomada. */
+    int prioridade; /*!< Corresponde à prioridade da tomada. */
 };
 
 //!  Classe Mensageiro
@@ -35,7 +35,7 @@ class Mensageiro {
 		}
 		
 		/*!
-			Método que transmite uma mensagem em Broadcast.
+			Método que transmite uma mensagem em broadcast.
 			\param msg é a mensagem que será enviada.
 		*/
 		void enviarBroadcast(Dados msg) {
@@ -62,13 +62,13 @@ class Mensageiro {
 			Dados msg;
 			bool hasMsg = nic->receive(&remetente, &prot, &msg, sizeof msg);
 			
-			if (!hasMsg) { // Se não chegou mensagem nenhuma
+			if (!hasMsg) { // Se não foi recebida nenhuma mensagem
 				msg.remetente = -1;
 				msg.consumoPrevisto = -1;
 				msg.prioridade = -1;
 			}
 			
-			return msg; // Retornar só a msg mesmo?
+			return msg; // Retornar só a msg?
 		}
 		
 		/*!
@@ -314,10 +314,10 @@ class Gerente {
 		float maximoConsumoMensal; /*!< Variável que indica o máximo de consumo que as tomadas podem ter mensalmente.*/
 		float consumoProprioPrevisto; /*!< Variável que indica o consumo previsto da tomada no mês.*/
 		float consumoTotalPrevisto; /*!< Variável que indica o consumo total previsto no mês.*/
-		float historico[31];
+		float historico[28];
 		
-		//Mensageiro ?
-		//retrição de horários
+		//Mensageiro
+		//Restrição de horários
 
 	public:
 		/*!
@@ -366,5 +366,5 @@ class Gerente {
 	Método inicial do programa.
 */
 int main() {
-	Tomada *t = new Tomada();
+	Tomada *t = new Tomada(); 
 };
