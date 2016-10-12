@@ -238,7 +238,6 @@ class TomadaInteligente: public Tomada {
 		int getEndereco() {
 			return endereco;
 		}
-
 };
 
 
@@ -315,15 +314,23 @@ class Gerente {
 		float consumoProprioPrevisto; /*!< Variável que indica o consumo previsto da tomada no mês.*/
 		float consumoTotalPrevisto; /*!< Variável que indica o consumo total previsto no mês.*/
 		float historico[28];
-		
-		//Mensageiro
-		//Restrição de horários
+
+		/*!
+			Método que .
+		*/
+		void sincronizar() {
+			//verificar mês
+			//verificar período do dia para pegar a prioridade
+
+		}
 
 	public:
 		/*!
 			Método construtor da classe
 		*/
-		Gerente();
+		Gerente(Tomada t) {
+			tomada = t;
+		}
 
 		/*!
 			Método que altera o valor do consumo mensal máximo para o valor passado por parâmetro.
@@ -357,6 +364,16 @@ class Gerente {
 		void fazerPrevisaoConsumoTotal() {
 			consumoTotalPrevisto = Previsor::preverConsumoTotal();
 		}
+
+		/*!
+			Método que realiza a sincronização entre as tomadas a cada 6 horas.
+			\sa sincronizar()
+		*/
+		void iniciar() {
+			//while true {
+			sincronizar();
+			//while não é hora de acordar}
+		}
 };
 
 
@@ -366,5 +383,8 @@ class Gerente {
 	Método inicial do programa.
 */
 int main() {
-	Tomada *t = new Tomada(); 
+	TomadaInteligente* t = new TomadaInteligente(); 
+	//t.setPrioridades
+	Gerente g = new Gerente(t);
+	//g.iniciar();
 };
