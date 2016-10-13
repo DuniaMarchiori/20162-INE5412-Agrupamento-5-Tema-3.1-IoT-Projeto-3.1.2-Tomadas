@@ -2,11 +2,25 @@
 
 #include <gpio.h>
 #include <nic.h>
+#include <clock.h>
+
+#define INTERVALO_ENVIO_MENSAGENS 5 /*!< Intervalo(em minutos) em que são feitos envio e recebimento de mensagens entre as tomadas. */
 
 using namespace EPOS;
 
 typedef NIC::Address Address;
 typedef NIC::Protocol Protocol;
+
+//!  Struct Prioridades
+/*!
+	Struct contendo as prioridades da tomada ao longo do dia.
+*/
+struct Prioridades {
+    int madrugada; /*!< Corresponde à prioridade da tomada no horario das 00:00 (incluso) às 06:00 (não incluso). */
+    int dia; /*!< Corresponde à prioridade da tomada no horario das 06:00 (incluso) às 12:00 (não incluso). */
+    int tarde; /*!< Corresponde à prioridade da tomada no horario das 12:00 (incluso) às 18:00 (não incluso). */
+    int noite; /*!< Corresponde à prioridade da tomada no horario das 18:00 (incluso) às 00:00 (não incluso). */
+};
 
 //!  Struct Dados
 /*!
@@ -14,6 +28,7 @@ typedef NIC::Protocol Protocol;
 */
 struct Dados {
     Address remetente; /*!< Endereço da tomada remetente da mensagem. */
+    bool ligada; /*!< Indica se a tomada remetente está ligada. */
     float consumoPrevisto; /*!< Corresponde ao consumo previsto da tomada. */
     int prioridade; /*!< Corresponde à prioridade da tomada. */
 };
@@ -87,28 +102,28 @@ class Mensageiro {
 */
 class Led {
 	private:
-		GPIO *led; /*!< Variável que representa o LED.*/
+		//GPIO *led; /*!< Variável que representa o LED.*/
 
 	public:
 		/*!
 			Método construtor da classe
 		*/
 		Led() {
-			led = new GPIO('C',3, GPIO::OUTPUT);
+			//led = new GPIO('C',3, GPIO::OUTPUT);
 		}
 
 		/*!
 			Método que acende o LED do EPOSMoteIII.
 		*/
     	void acenderLED() {
-    		led->set(true);
+    		//led->set(true);
     	}
 
     	/*!
 			Método que desliga o LED do EPOSMoteIII.
     	*/
     	void desligarLED() {
-    		led->set(false);
+    		//led->set(false);
     	}
 
 };
@@ -172,7 +187,7 @@ class TomadaComDimmer: public Tomada {
 		/*!
 			Método construtor da classe
 		*/
-		TomadaComDimmer();
+		//TomadaComDimmer();
 
 		/*!
 			Método que retorna a a porcentagem de dimmerização da tomada.
@@ -197,7 +212,7 @@ class TomadaComDimmer: public Tomada {
 */
 class TomadaInteligente: public Tomada {
 	private:
-		int prioridade; /*!< Variável que indica a prioridade da tomada.*/
+		Prioridades prioridades; /*!< Variável que contém as prioridade da tomada ao longo do dia.*/
 		float consumo; /*!< Variável que indica o consumo da tomada.*/
 		int endereco; /*!< Variável que indica o endereço da tomada.*/
 
@@ -205,22 +220,57 @@ class TomadaInteligente: public Tomada {
 		/*!
 			Método construtor da classe
 		*/
-		TomadaInteligente();
+		//TomadaInteligente();
 
 		/*!
-			Método que altera a prioridade da tomada para o valor passado por parâmetro.
-			\param p é a prioridade da tomada.
+			Método que altera todas as prioridades da tomada para o valor passado por parâmetro.
+			\param p é o novo valor das prioridades da tomada.
 		*/
-		void setPrioridade(int p) {
-			prioridade = p;
+		void setPrioridades(int p) {
+			prioridades.madrugada = p;
+			prioridades.dia = p;
+			prioridades.tarde = p;
+			prioridades.noite = p;
+		}
+		
+		/*!
+			Método que altera a prioridade no periodo das 00:00 às 06:00.
+			\param p é o novo valor da prioridade nesse horario.
+		*/
+		void setPrioridadeMadrugada(int p) {
+			prioridades.madrugada = p;
+		}
+		
+		/*!
+			Método que altera a prioridade no periodo das 06:00 às 12:00.
+			\param p é o novo valor da prioridade nesse horario.
+		*/
+		void setPrioridadeDia(int p) {
+			prioridades.dia = p;
+		}
+		
+		/*!
+			Método que altera a prioridade no periodo das 12:00 às 18:00.
+			\param p é o novo valor da prioridade nesse horario.
+		*/
+		void setPrioridadeTarde(int p) {
+			prioridades.tarde = p;
+		}
+		
+		/*!
+			Método que altera a prioridade no periodo das 18:00 às 00:00.
+			\param p é o novo valor da prioridade nesse horario.
+		*/
+		void setPrioridadeNoite(int p) {
+			prioridades.noite = p;
 		}
 
 		/*!
-			Método que retorna o valor da prioridade da tomada.
-			\return Valor inteiro que indica a prioridade da tomada.
+			Método que retorna as prioridades da tomada.
+			\return Struct que contém as quatro possiveis prioridades da tomada.
 		*/
-		int getPrioridade() {
-			return prioridade;
+		Prioridades getPrioridades() {
+			return prioridades;
 		}
 
 		/*!
@@ -228,6 +278,10 @@ class TomadaInteligente: public Tomada {
 			\return Valor float que indica o consumo atual da tomada. Caso esteja desligada, o valor retornado é 0.
 		*/
 		float getConsumo() {
+			if (!ligada) { //se está desligada
+				consumo = 0;
+			}
+			//random consumo
 			return consumo;
 		}
 
@@ -251,7 +305,7 @@ class TomadaMulti: public TomadaComDimmer, public TomadaInteligente {
 		/*!
 			Método construtor da classe
 		*/
-		TomadaMulti();
+		//TomadaMulti();
 };
 
 
@@ -265,10 +319,10 @@ class Previsor {
 		/*!
 			Método construtor da classe
 		*/
-		Previsor();
+		//Previsor();
 
 		/*!
-			Método que estima o consumo da tomada até o fim do mês.
+			Método que estima o consumo da tomada para as pŕoximas 6 horas.
 			\return Valor previsto para o consumo da tomada.
 		*/
 		static float preverConsumoProprio(float historico[28]) { //28 entradas corresponde a 7 dias(uma entrada a cada 6 horas)
@@ -294,10 +348,16 @@ class Previsor {
     	}
 
 		/*!
-			Método que estima o consumo de todas as tomadas juntas.
+			Método que estima o consumo de todas as tomadas juntas até o fim do mês.
 			\return Valor previsto para o consumo total das tomadas.
 		*/
-		static float preverConsumoTotal();
+		static float preverConsumoTotal() {
+			/*Cada previsão é para as próximas 6 horas. Assim, esse valor é multiplicado por quantas mais 6 horas faltam para acabar o mês 
+				para sabermos se o consumo está dentro do limite.*/
+			int quartosDeDia = 1;
+			// para cada previsão de tomada que está ligada: previsão * quartos de dia
+			//soma tudo e retorna
+		}
 
 };
 
@@ -309,27 +369,66 @@ class Previsor {
 */
 class Gerente {
 	private:
-		Tomada tomada; /*!< Variável que indica a tomada que o gerente controla.*/
+		TomadaInteligente* tomada; /*!< Variável que indica a tomada que o gerente controla.*/
 		float maximoConsumoMensal; /*!< Variável que indica o máximo de consumo que as tomadas podem ter mensalmente.*/
+		float consumoMensal; /*!< Variável que indica o consumo mensal das tomadas até o momento.*/
 		float consumoProprioPrevisto; /*!< Variável que indica o consumo previsto da tomada no mês.*/
 		float consumoTotalPrevisto; /*!< Variável que indica o consumo total previsto no mês.*/
-		float historico[28];
-
+		float historico[28]; /*!< Vetor que guarda o consumo da tomada a cada 6 horas.*/
+		unsigned int mes; /*!< Variável que indica o mês atual.*/
+		Clock* relogio; /*!< Objeto que possui informações como data e hora.*/
+		Mensageiro* mensageiro;	/*!< Objeto que provê a comunicação da placa com as outras.*/
+	
 		/*!
 			Método que .
 		*/
 		void sincronizar() {
-			//verificar mês
-			//verificar período do dia para pegar a prioridade
-
+			bool fim = false;
+			Dados dadosRecebidos, dadosEnviar;
+			unsigned int mesAtual = relogio->date().month();
+			unsigned int minutosIniciais = relogio->date().minute();
+			
+			if (mesAtual != mes) { //necessário?
+				consumoMensal = 0;
+				mes = mesAtual;
+			}
+			
+			while(!fim) {
+				//adiciona consumo no fim da fila -> se está ligada
+				fazerPrevisaoConsumoProprio();
+				dadosEnviar.remetente = tomada->getEndereco();
+				dadosEnviar.ligada = tomada->estaLigada();
+				dadosEnviar.consumoPrevisto = consumoProprioPrevisto;
+				dadosEnviar.prioridade = prioridadeAtual();
+				while (relogio->date().minute() < minutosIniciais + INTERVALO_ENVIO_MENSAGENS) {
+					enviarMensagemBroadcast(dadosEnviar);
+					dadosRecebidos = receberMensagem();
+					//atualiza registro das outras tomadas
+				}
+				fazerPrevisaoConsumoTotal(); // passar tabela das outras tomadas
+				if (consumoTotalPrevisto > maximoConsumoMensal) { // se a previsão está acima do consumo máximo
+					if (deveDesligar()) {
+						tomada->desligar();
+					}
+					while (relogio->date().minute() < minutosIniciais + INTERVALO_ENVIO_MENSAGENS + 1);
+				} else { // se a previsão está dentro do consumo máximo
+					//vê se a tomada desligada pode ligar, baseada na previsão do consumo dela e do consumo total
+					//podeLigar();
+					fim = true;				
+				}
+			}
 		}
 
 	public:
 		/*!
 			Método construtor da classe
 		*/
-		Gerente(Tomada t) {
+		Gerente(TomadaInteligente* t) {
+			relogio = new Clock();
 			tomada = t;
+			mes = relogio->date().month();
+			consumoMensal = 0;
+			mensageiro = new Mensageiro();
 		}
 
 		/*!
@@ -343,12 +442,16 @@ class Gerente {
 		/*!
 			Método que envia mensagem para as outras tomadas.
 		*/
-		void enviarMensagem();
+		void enviarMensagemBroadcast(Dados d) {
+			mensageiro->enviarBroadcast(d);
+		}
 
 		/*!
 			Método que recebe mensagem das outras tomadas.
 		*/
-		void receberMensagem();
+		Dados receberMensagem() {
+			return mensageiro->receberMensagem();
+		}
 
 		/*!
 			Método que atualiza o valor da previsão do consumo da tomada até o fim do mês.
@@ -374,6 +477,34 @@ class Gerente {
 			sincronizar();
 			//while não é hora de acordar}
 		}
+		
+		/*!
+			Método que baseado no horário atual descobre a prioridade certa.
+			\return valor da prioridade da tomada no período atual do dia.
+		*/
+		int prioridadeAtual() {
+			Prioridades prioridades = tomada->getPrioridades();
+			unsigned int hour = relogio->date().hour();
+			int quarterOfDay = (int) hour / 6;
+			
+			switch(quarterOfDay){
+				case 0:
+					return prioridades.madrugada;
+				case 1:
+					return prioridades.dia;
+				case 2:
+					return prioridades.tarde;
+				case 3:
+					return prioridades.noite;
+			}
+			
+		}
+
+		/*!
+			Método que verifica se a tomada deve desligar para manter o consumo mensal dentro do consumo máximo.
+			\return valor booleano que indica se a tomada deve desligar.
+		*/
+		bool deveDesligar();
 };
 
 
@@ -385,6 +516,6 @@ class Gerente {
 int main() {
 	TomadaInteligente* t = new TomadaInteligente(); 
 	//t.setPrioridades
-	Gerente g = new Gerente(t);
+	Gerente* g = new Gerente(t);
 	//g.iniciar();
 };
