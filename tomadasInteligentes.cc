@@ -511,17 +511,20 @@ class Gerente {
 			\param e é o elemento a ser atualizado ou adicionado na hash.
 		*/
 		void atualizaHash(List_Elements::Singly_Linked_Ordered<Dados, int>* e) {
+			bool estaNaHash = false;
 			for(auto iter = hash->begin(); iter != hash->end(); iter++) {
 				//se iter não é vazio: begin() retorna um objeto vazio no inicio por algum motivo
 				if (iter != 0) {
 					if (iter->object()->remetente == e->object()->remetente) {
+						estaNaHash = true;
 						iter->object()->ligada = e->object()->ligada;
 						iter->object()->consumoPrevisto = e->object()->consumoPrevisto;
 						iter->object()->prioridade = e->object()->prioridade;
-					} else { // elemento não está na hash
-						hash->insert(e);
-					}
+					} 
 				}
+			}
+			if(!estaNaHash) { //elemento não está na hash
+				hash->insert(e);	
 			}
 		}
 
