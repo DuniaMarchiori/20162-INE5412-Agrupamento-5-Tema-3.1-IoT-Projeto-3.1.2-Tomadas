@@ -523,7 +523,8 @@ class Gerente {
 					} 
 				}
 			}
-			if(!estaNaHash) { //elemento não está na hash
+			if(!estaNaHash && e->object()->remetente != -1) { 
+				//elemento não está na hash e não é um elemento "vazio"(remetente é igual a -1 quando não há mensagem recebida)
 				hash->insert(e);	
 			}
 		}
