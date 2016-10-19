@@ -4,6 +4,7 @@
 #include <nic.h>
 #include <clock.h>
 #include <utility/hash.h>
+#include <utility/random.h>
 
 #define INTERVALO_ENVIO_MENSAGENS 5 /*!< Intervalo(em minutos) em que são feitos envio e recebimento de mensagens entre as tomadas. */
 #define NUMERO_ENTRADAS_HISTORICO 28 /*!< Quantidade de entradas no histórico. Cada entrada corresponde ao consumo a cada 6 horas. */
@@ -273,8 +274,10 @@ class TomadaInteligente: public Tomada {
 		/*!
 			Método construtor da classe
 		*/
-		//TomadaInteligente();
-
+		TomadaInteligente() {
+			consumo = 0;
+		}
+	
 		/*!
 			Método que altera todas as prioridades da tomada para o valor passado por parâmetro.
 			\param p é o novo valor das prioridades da tomada.
@@ -331,12 +334,21 @@ class TomadaInteligente: public Tomada {
 			\return Valor float que indica o consumo atual da tomada. Caso esteja desligada, o valor retornado é 0.
 		*/
 		float getConsumo() {
-			/*if (!ligada) { //se está desligada
 				
-			}*/
-			//random consumo
-			consumo = 0;
+			if (ligada) {
+				if (consumo == 0) {
+					consumo = 200 + Random::random() % (500-200+1);
+				}
+				// Aplica uma variância ao ultimo consumo registrado, para simular um sistema real
+				// onde os valores são de certa forma consistentes.
+				float variacao = (90 + (Random::random() % 21)) / 100f; // valor de 0.9 até 1.1 ou 90% até 110%
+				consumo = consumo * variacao;
+			} else {
+				consumo = 0;
+			}
+			
 			return consumo;
+			
 		}
 
 		/*!
