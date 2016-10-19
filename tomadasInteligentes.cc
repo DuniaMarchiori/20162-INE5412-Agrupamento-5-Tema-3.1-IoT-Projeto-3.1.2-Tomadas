@@ -511,19 +511,12 @@ class Gerente {
 			\param e é o elemento a ser atualizado ou adicionado na hash.
 		*/
 		void atualizaHash(List_Elements::Singly_Linked_Ordered<Dados, int>* e) {
-			bool estaNaHash = false;
-			for(auto iter = hash->begin(); iter != hash->end(); iter++) {
-				//se iter não é vazio: begin() retorna um objeto vazio no inicio por algum motivo
-				if (iter != 0) {
-					if (iter->object()->remetente == e->object()->remetente) {
-						estaNaHash = true;
-						iter->object()->ligada = e->object()->ligada;
-						iter->object()->consumoPrevisto = e->object()->consumoPrevisto;
-						iter->object()->prioridade = e->object()->prioridade;
-					} 
-				}
-			}
-			if(!estaNaHash && e->object()->remetente != -1) { 
+			Dados* d =  hash->search_key(e->object()->remetente)->object();
+			if (d != 0) {
+					d->ligada = e->object()->ligada;
+					d->consumoPrevisto = e->object()->consumoPrevisto;
+					d->prioridade = e->object()->prioridade;
+			} else if(e->object()->remetente != (Address)-1) { 
 				//elemento não está na hash e não é um elemento "vazio"(remetente é igual a -1 quando não há mensagem recebida)
 				hash->insert(e);	
 			}
