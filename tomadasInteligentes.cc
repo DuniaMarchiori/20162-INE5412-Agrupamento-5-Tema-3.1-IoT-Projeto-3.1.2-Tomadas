@@ -461,32 +461,36 @@ class Gerente {
 				calculaQuantidadeQuartosDeDia();
 			}
 			
-			while(!fim) {
-				//adiciona consumo no fim da fila (se está ligada)
-				//atualizaHistorico(tomada.getConsumo());
-				fazerPrevisaoConsumoProprio();
-				dadosEnviar.remetente = tomada->getEndereco();
-				dadosEnviar.ligada = tomada->estaLigada();
-				dadosEnviar.consumoPrevisto = consumoProprioPrevisto;
-				dadosEnviar.prioridade = prioridadeAtual();
-				while (relogio->date().minute() < minutosIniciais + INTERVALO_ENVIO_MENSAGENS) {
+			//adiciona consumo no fim da fila (se está ligada)
+			//atualizaHistorico(tomada.getConsumo());
+			fazerPrevisaoConsumoProprio();
+			dadosEnviar.remetente = tomada->getEndereco();
+			dadosEnviar.ligada = tomada->estaLigada();
+			dadosEnviar.consumoPrevisto = consumoProprioPrevisto;
+			dadosEnviar.prioridade = prioridadeAtual();
+			
+			unsigned int minutoAtual = relogio->date().minute();
+			unsigned int ultimoSend = minutoAtual;
+			while (minutoAtual < minutosIniciais + INTERVALO_ENVIO_MENSAGENS) {
+				if (minutoAtual - ultimoSend >= 1) { //envia a cada um minuto
 					enviarMensagemBroadcast(dadosEnviar);
+				} else {
 					dadosRecebidos = &receberMensagem(); // pra tirar o & o receberMensagem precisa retornar um ponteiro
 					elemento = new List_Elements::Singly_Linked_Ordered<Dados, int>(dadosRecebidos,dadosRecebidos->remetente); //hash é indexada pelo endereço da tomada
 					atualizaHash(elemento);
 				}
-				
-				fazerPrevisaoConsumoTotal(); // considera todas as tomadas, mesmo as desligadas			
-				if (consumoTotalPrevisto > maximoConsumoMensal) { // se a previsão está acima do consumo máximo
-					if (deveDesligar()) {
-						tomada->desligar();
-					}
-					while (relogio->date().minute() < minutosIniciais + INTERVALO_ENVIO_MENSAGENS + 1);
-				} else { // se a previsão está dentro do consumo máximo
-					//liga todas
-					//podeLigar();
-					fim = true;				
+				minutoAtual = relogio->date().minute();		
+			}
+
+			fazerPrevisaoConsumoTotal(); // considera todas as tomadas, mesmo as desligadas			
+			if (consumoTotalPrevisto > maximoConsumoMensal) { // se a previsão está acima do consumo máximo
+				if (deveDesligar()) {
+					tomada->desligar();
 				}
+				while (relogio->date().minute() < minutosIniciais + INTERVALO_ENVIO_MENSAGENS + 1); // necessário?
+			} else { // se a previsão está dentro do consumo máximo
+				//liga todas
+				//podeLigar();	-> tomada->ligar();			
 			}
 			quantidade6Horas--;
 		}
@@ -612,7 +616,7 @@ class Gerente {
 			Método que verifica se a tomada deve desligar para manter o consumo mensal dentro do consumo máximo.
 			\return valor booleano que indica se a tomada deve desligar.
 		*/
-		bool deveDesligar();
+		bool deveDesligar(); //verificar se pode dimmerizar
 	
 		/*!
 			Método que calcula quantos dias restam para o mês acabar.
