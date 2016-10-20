@@ -4,6 +4,8 @@
 #include <nic.h>
 #include <utility/hash.h>
 #include <utility/random.h>
+#include <alarm.h>
+#include <chronometer.h>
 
 
 #define INTERVALO_ENVIO_MENSAGENS 5 /*!< Intervalo(em minutos) em que são feitos envio e recebimento de mensagens entre as tomadas. */
@@ -111,17 +113,38 @@ class Relogio {
 		unsigned int ano; /*!< Variável que representa o ano atual.*/
 		unsigned int hora; /*!< Variável que representa a hora atual.*/
 		unsigned int minutosIniciais; // necessário? /*!< Variável que representa os minutos em que a tomada foi criada.*/
-	
+		int diasNoMes[12]; /*!< Vetor que guarda quantos dias tem em cada mês.*/
+
+		/*!
+			Método que inicializa o vetor com a quantidade de dias em cada mẽs.
+		*/
+		void inicializarMeses() {
+			// 0: Janeiro, 1: Fevereiro, ..., 11: Dezembro
+			diasNoMes[0] = 31; 
+			diasNoMes[1] = 28;
+			diasNoMes[2] = 31;
+			diasNoMes[3] = 30;
+			diasNoMes[4] = 31;
+			diasNoMes[5] = 30;
+			diasNoMes[6] = 31;
+			diasNoMes[7] = 31;
+			diasNoMes[8] = 30;
+			diasNoMes[9] = 31;
+			diasNoMes[10] = 30;
+			diasNoMes[11] =	31;		
+		}
+		
 	public:
 		/*!
 			Método construtor da classe
 		*/
-		Relogio(unsigned int d, unsigned int m, unsigned int a, unsigned int h, unsigned int m) {
+		Relogio(unsigned int a, unsigned int m, unsigned int d, unsigned int h, unsigned int min) {
 			dia = d;
 			mes = m;
 			ano = a;
 			hora = h;
-			minutosIniciais = m;
+			minutosIniciais = min;
+			inicializarMeses();
 		}
 		
 		/*!
@@ -188,6 +211,20 @@ class Relogio {
 				hora = aux;
 			}
 		}
+		
+		/*!
+			Método que retorna quantos dias tem em determinado mês.
+			\param mes é o mês que se deseja retornar a quantidade de dias
+			\param ano é um inteiro que representa o ano.
+			\return Valor inteiro que representa quantos dias tem no mês.
+		*/
+		int getDiasNoMes(int mes, int ano) {
+			if (ano % 4 == 0 && mes == 2) { //se é ano bissexto e o mês é fevereiro
+				return 29;
+			} else {
+				return diasNoMes[mes-1];
+			}
+		}
 };
 
 //----------------------------------------------------------------------------
@@ -223,56 +260,6 @@ class Led {
 
 };
 
-//----------------------------------------------------------------------------
-//!  Classe Calendario
-/*!
-	Classe que guarda quantos dias tem em cada mês do ano.
-*/
-class Calendario {
-	private:
-		int diasNoMes[12]; /*!< Vetor que guarda quantos dias tem em cada mês.*/
-			
-		/*!
-			Método que inicializa o vetor com a quantidade de dias em cada mẽs.
-		*/
-		void inicializarMeses() {
-			// 0: Janeiro, 1: Fevereiro, ..., 11: Dezembro
-			diasNoMes[0] = 31; 
-			diasNoMes[1] = 28;
-			diasNoMes[2] = 31;
-			diasNoMes[3] = 30;
-			diasNoMes[4] = 31;
-			diasNoMes[5] = 30;
-			diasNoMes[6] = 31;
-			diasNoMes[7] = 31;
-			diasNoMes[8] = 30;
-			diasNoMes[9] = 31;
-			diasNoMes[10] = 30;
-			diasNoMes[11] =	31;		
-		}
-	
-	public:
-		/*!
-			Método construtor da classe
-		*/
-		Calendario() {
-			inicializarMeses();
-		}
-		
-		/*!
-			Método que retorna quantos dias tem em determinado mês.
-			\param mes é o mês que se deseja retornar a quantidade de dias
-			\param ano é um inteiro que representa o ano.
-			\return Valor inteiro que representa quantos dias tem no mês.
-		*/
-		int getDiasNoMes(int mes, int ano) {
-			if (ano % 4 == 0 && mes == 2) { //se é ano bissexto e o mês é fevereiro
-				return 29;
-			} else {
-				return diasNoMes[mes-1];
-			}
-		}
-};
 
 //----------------------------------------------------------------------------
 //!  Classe Tomada
@@ -544,9 +531,6 @@ class Gerente {
 		float consumoProprioPrevisto; /*!< Variável que indica o consumo previsto da tomada no mês.*/
 		float consumoTotalPrevisto; /*!< Variável que indica o consumo total previsto no mês.*/
 		float *historico; /*!< Vetor que guarda o consumo da tomada a cada 6 horas.*/
-		//int quantidadeEntradasHistorico; /*!< Variável que indica a quantidade de entradas no histórico já ocupadas.*/
-		unsigned int mes; /*!< Variável que indica o mês atual.*/
-		Calendario* c; /*!< Objeto que possui informações sobre os dias no mês.*/
 		int quantidade6Horas; /*!< Variável que indica a quantidade de quartos de dia(6 horas) que faltam para o fim do mês.*/
 		Relogio* relogio; /*!< Objeto que possui informações como data e hora.*/
 		Mensageiro* mensageiro;	/*!< Objeto que provê a comunicação da placa com as outras.*/
@@ -590,7 +574,7 @@ class Gerente {
 				minutoAtual = relogio->date().minute();		
 			}
 
-			fazerPrevisaoConsumoTotal(); // considera todas as tomadas, mesmo as desligadas			
+			fazerPrevisaoConsumoTotal(); // considera todas as tomadas, mesmo as desligadas
 			if (consumoTotalPrevisto > maximoConsumoMensal) { // se a previsão está acima do consumo máximo
 				mantemConsumoDentroDoLimite(); //desliga as tomadas necessárias para manter o consumo dentro do limite
 				while (relogio->date().minute() < minutosIniciais + INTERVALO_ENVIO_MENSAGENS + 1); // necessário?
@@ -636,14 +620,12 @@ class Gerente {
 		/*!
 			Método construtor da classe
 		*/
-		Gerente(TomadaInteligente* t, Relogio r) {
+		Gerente(TomadaInteligente* t, Relogio* r) {
 			relogio = r;
 			tomada = t;
-			mes = relogio->getMes();
 			calculaQuantidadeQuartosDeDia();
 			consumoMensal = 0;
 			mensageiro = new Mensageiro();
-			c = new Calendario();
 			hash = new Simple_Hash<Dados, sizeof(Dados), int>();
 			historico = new float[NUMERO_ENTRADAS_HISTORICO];
 			//inicializar historico com 0
@@ -691,9 +673,27 @@ class Gerente {
 			\sa sincronizar()
 		*/
 		void iniciar() {
-			//while true {
-			sincronizar();
-			//while não é hora de acordar}
+			Chronometer* cronometroPrincipal = new Chronometer();
+			
+			long long tempoQuePassou = ((relogio->getHora()*60 + relogio->getMinutosIniciais()) % (6*60)) * 60 * 1000000;
+			long long timeTillNextWake;
+			long long milisecsEm6Horas = 6*60*60*1000000.0;
+			
+			while (true) {
+				
+				timeTillNextWake = milisecsEm6Horas - tempoQuePassou;
+				
+				Alarm::delay(timeTillNextWake);
+				
+				cronometroPrincipal->reset();
+				cronometroPrincipal->start();
+				
+				sincronizar();
+				
+				cronometroPrincipal->stop();
+				tempoQuePassou = cronometroPrincipal->read();
+
+			}
 		}
 		
 		/*!
@@ -749,8 +749,9 @@ class Gerente {
 		*/
 		int diasRestantes() {
 			unsigned int ano = relogio->getAno();
+			unsigned int mes = relogio->getMes();
 			unsigned int diaAtual = relogio->getDia();
-			int diasNoMes = c->getDiasNoMes(mes, ano);
+			int diasNoMes = relogio->getDiasNoMes(mes, ano);
 			return (diasNoMes - diaAtual);		
 		}
 	
