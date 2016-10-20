@@ -177,8 +177,9 @@ class Relogio {
 			Método que atualiza os dados do relogio, baseado no tempo desde a ultima requisicao.
 		*/
 		void atualizaRelogio() {
-			cronometro->lap();
 			unsigned long long tempoDecorrido = cronometro->read();
+			cronometro->reset();
+			cronometro->start();
 			incrementarMicrossegundo(tempoDecorrido);
 		}
 		
