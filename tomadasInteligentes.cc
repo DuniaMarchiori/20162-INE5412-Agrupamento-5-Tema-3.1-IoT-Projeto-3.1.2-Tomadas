@@ -2,7 +2,6 @@
 
 #include <gpio.h>
 #include <nic.h>
-#include <clock.h>
 #include <utility/hash.h>
 #include <utility/random.h>
 
@@ -97,6 +96,97 @@ class Mensageiro {
 		*/
 		Address obterEnderecoNIC() {
 			return nic->address();
+		}
+};
+
+//----------------------------------------------------------------------------
+//!  Classe Relogio
+/*!
+	Classe que lida com o dia, mês, ano, hora e minutos atuais.
+*/
+class Relogio {
+	private:
+		unsigned int dia; /*!< Variável que representa o dia atual.*/
+		unsigned int mes; /*!< Variável que representa o mês atual.*/
+		unsigned int ano; /*!< Variável que representa o ano atual.*/
+		unsigned int hora; /*!< Variável que representa a hora atual.*/
+		unsigned int minutosIniciais; // necessário? /*!< Variável que representa os minutos em que a tomada foi criada.*/
+	
+	public:
+		/*!
+			Método construtor da classe
+		*/
+		Relogio(unsigned int d, unsigned int m, unsigned int a, unsigned int h, unsigned int m) {
+			dia = d;
+			mes = m;
+			ano = a;
+			hora = h;
+			minutosIniciais = m;
+		}
+		
+		/*!
+			Método que retorna o dia atual.
+			\return um inteiro que representa o dia atual.
+		*/
+		unsigned int getDia() {
+			return dia;
+		}
+		
+		/*!
+			Método que retorna o mês atual.
+			\return um inteiro que representa o mês atual.
+		*/
+		unsigned int getMes() {	
+			return mes;
+		}
+		
+		/*!
+			Método que retorna o ano atual.
+			\return um inteiro que representa o ano atual.
+		*/
+		unsigned int getAno() {
+			return ano;
+		}
+	
+		/*!
+			Método que retorna a hora atual.
+			\return um inteiro que representa a hora atual(no formato 24 horas).
+		*/
+		unsigned int getHora() {
+			return hora;
+		}
+	
+		/*!
+			Método que retorna os minutos em que a tomada foi criada.
+			\return um inteiro que representa os minutos que a tomada foi criada.
+		*/
+		unsigned int getMinutosIniciais() {
+			return minutosIniciais;
+		}
+	
+		/*!
+			Método que atualiza os valores do relógio quando é um novo mês.
+		*/
+		void novoMes() {
+			++mes;
+			dia = 1;
+			if (mes > 12) {
+				mes = 1;
+				++ano;
+			}
+		}
+	
+		/*!
+			Método que atualiza a hora do relógio a cada 6 horas.
+		*/
+		void atualizaRelogio() {
+			int aux = hora + 6;
+			if (aux > 23) {
+				hora = aux - 24;
+				++dia;			
+			} else {
+				hora = aux;
+			}
 		}
 };
 
@@ -458,7 +548,7 @@ class Gerente {
 		unsigned int mes; /*!< Variável que indica o mês atual.*/
 		Calendario* c; /*!< Objeto que possui informações sobre os dias no mês.*/
 		int quantidade6Horas; /*!< Variável que indica a quantidade de quartos de dia(6 horas) que faltam para o fim do mês.*/
-		Clock* relogio; /*!< Objeto que possui informações como data e hora.*/
+		Relogio* relogio; /*!< Objeto que possui informações como data e hora.*/
 		Mensageiro* mensageiro;	/*!< Objeto que provê a comunicação da placa com as outras.*/
 		Simple_Hash<Dados, sizeof(Dados), int>* hash; /*!< Hash que guarda informações recebidas sobre as outras tomadas indexadas pelo endereço da tomada.*/
 	
@@ -469,12 +559,11 @@ class Gerente {
 			bool fim = false;
 			Dados *dadosRecebidos, dadosEnviar;
 			List_Elements::Singly_Linked_Ordered<Dados, int>* elemento; //elemento da hash
-			unsigned int mesAtual = relogio->date().month();
 			unsigned int minutosIniciais = relogio->date().minute();
 			
-			if (mesAtual != mes) {
+			if (quantidade6Horas == 0) {
 				consumoMensal = 0; //necessário?
-				mes = mesAtual;
+				relogio->novoMes();
 				calculaQuantidadeQuartosDeDia();
 			}
 			
@@ -489,6 +578,7 @@ class Gerente {
 			unsigned int minutoAtual = relogio->date().minute();
 			unsigned int ultimoSend = minutoAtual;
 			while (minutoAtual < minutosIniciais + INTERVALO_ENVIO_MENSAGENS) {
+				//tem que atualizar o relogio quando a tomada é acordada
 				if (minutoAtual - ultimoSend >= 1) { //envia a cada um minuto
 					enviarMensagemBroadcast(dadosEnviar);
 				} else {
@@ -546,10 +636,10 @@ class Gerente {
 		/*!
 			Método construtor da classe
 		*/
-		Gerente(TomadaInteligente* t) {
-			relogio = new Clock();
+		Gerente(TomadaInteligente* t, Relogio r) {
+			relogio = r;
 			tomada = t;
-			mes = relogio->date().month();
+			mes = relogio->getMes();
 			calculaQuantidadeQuartosDeDia();
 			consumoMensal = 0;
 			mensageiro = new Mensageiro();
@@ -612,7 +702,7 @@ class Gerente {
 		*/
 		int prioridadeAtual() {
 			Prioridades prioridades = tomada->getPrioridades();
-			unsigned int hour = relogio->date().hour();
+			unsigned int hour = relogio->getHora();
 			int quarterOfDay = (int) hour / 6;
 			
 			switch(quarterOfDay){
@@ -658,8 +748,8 @@ class Gerente {
 			\return Valor inteiro que indica quantos dias faltam para o fim do mês.
 		*/
 		int diasRestantes() {
-			unsigned int ano = relogio->date().year();
-			unsigned int diaAtual = relogio->date().day();
+			unsigned int ano = relogio->getAno();
+			unsigned int diaAtual = relogio->getDia();
 			int diasNoMes = c->getDiasNoMes(mes, ano);
 			return (diasNoMes - diaAtual);		
 		}
@@ -669,7 +759,7 @@ class Gerente {
 		*/
 		void calculaQuantidadeQuartosDeDia() {
 			quantidade6Horas = diasRestantes() * 4;
-			int hora = relogio->date().hour();		
+			int hora = relogio->getHora();		
 			// ajusta da quantidade para quando a tomada é criada depois do primeiro 1/4 do dia.
 			int quartoDoDia = (int) hora / 6;
 			quantidade6Horas = quantidade6Horas - quartoDoDia;		
@@ -685,6 +775,7 @@ class Gerente {
 int main() {
 	TomadaInteligente* t = new TomadaInteligente(); 
 	//t.setPrioridades
-	Gerente* g = new Gerente(t);
+	//Relogio r;
+	//Gerente* g = new Gerente(t);
 	//g.iniciar();
 };
