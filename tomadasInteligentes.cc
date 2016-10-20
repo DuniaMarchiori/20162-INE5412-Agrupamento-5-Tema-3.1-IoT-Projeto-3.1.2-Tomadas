@@ -39,6 +39,20 @@ struct Dados {
     int prioridade; /*!< Corresponde à prioridade da tomada. */
 };
 
+//!  Struct Data
+/*!
+	Struct contendo valores de uma data.
+*/
+struct Data {
+	unsigned long long dia; /*!< Variável que representa o dia atual.*/
+	unsigned long long mes; /*!< Variável que representa o mês atual.*/
+	unsigned long long ano; /*!< Variável que representa o ano atual.*/
+	unsigned long long hora; /*!< Variável que representa a hora atual.*/
+	unsigned long long minuto; /*!< Variável que representa os minutos atuais.*/
+	unsigned long long segundo; /*!< Variável que representa os segundos atuais.*/
+	unsigned long long microssegundos; /*!< Variável que representa os microssegundos atuais.*/
+};
+
 //----------------------------------------------------------------------------
 //!  Classe Mensageiro
 /*!
@@ -106,16 +120,13 @@ class Mensageiro {
 //----------------------------------------------------------------------------
 //!  Classe Relogio
 /*!
-	Classe que lida com o dia, mês, ano, hora e minutos atuais.
+	Classe que lida com as informações de datas e horarios.
 */
 class Relogio {
 	private:
-		unsigned int dia; /*!< Variável que representa o dia atual.*/
-		unsigned int mes; /*!< Variável que representa o mês atual.*/
-		unsigned int ano; /*!< Variável que representa o ano atual.*/
-		unsigned int hora; /*!< Variável que representa a hora atual.*/
-		unsigned int minutosIniciais; // necessário? /*!< Variável que representa os minutos em que a tomada foi criada.*/
+		Data data;
 		int diasNoMes[12]; /*!< Vetor que guarda quantos dias tem em cada mês.*/
+		Chronometer* cronometro;
 
 		/*!
 			Método que inicializa o vetor com a quantidade de dias em cada mẽs.
@@ -140,11 +151,16 @@ class Relogio {
 			Método construtor da classe
 		*/
 		Relogio(unsigned int a, unsigned int m, unsigned int d, unsigned int h, unsigned int min) {
-			dia = d;
-			mes = m;
-			ano = a;
-			hora = h;
-			minutosIniciais = min;
+			cronometro = new Chronometer();
+			data.ano = a;
+			data.mes= m;
+			data.dia = d;
+			data.hora = h;
+			data.minuto = min;
+			data.segundo = 0;
+			data.microssegundos = 0;
+			cronometro->reset();
+			cronometro->start();
 			inicializarMeses();
 		}
 		
@@ -152,78 +168,112 @@ class Relogio {
 			Método que retorna o dia atual.
 			\return um inteiro que representa o dia atual.
 		*/
-		unsigned int getDia() {
-			return dia;
+		Data getData() {
+			atualizaRelogio();
+			return data;
 		}
-		
+
 		/*!
-			Método que retorna o mês atual.
-			\return um inteiro que representa o mês atual.
-		*/
-		unsigned int getMes() {	
-			return mes;
-		}
-		
-		/*!
-			Método que retorna o ano atual.
-			\return um inteiro que representa o ano atual.
-		*/
-		unsigned int getAno() {
-			return ano;
-		}
-	
-		/*!
-			Método que retorna a hora atual.
-			\return um inteiro que representa a hora atual(no formato 24 horas).
-		*/
-		unsigned int getHora() {
-			return hora;
-		}
-	
-		/*!
-			Método que retorna os minutos em que a tomada foi criada.
-			\return um inteiro que representa os minutos que a tomada foi criada.
-		*/
-		unsigned int getMinutosIniciais() {
-			return minutosIniciais;
-		}
-	
-		/*!
-			Método que atualiza os valores do relógio quando é um novo mês.
-		*/
-		void novoMes() {
-			++mes;
-			dia = 1;
-			if (mes > 12) {
-				mes = 1;
-				++ano;
-			}
-		}
-	
-		/*!
-			Método que atualiza a hora do relógio a cada 6 horas.
+			Método que atualiza os dados do relogio, baseado no tempo desde a ultima requisicao.
 		*/
 		void atualizaRelogio() {
-			int aux = hora + 6;
-			if (aux > 23) {
-				hora = aux - 24;
-				++dia;			
-			} else {
-				hora = aux;
+			cronometro->lap();
+			unsigned long long tempoDecorrido = cronometro->read();
+			incrementarMicrossegundo(tempoDecorrido);
+		}
+		
+		/*!
+			Método que incrementa o ano.
+			\param anos Quantos anos serão incrementados no relogio.
+		*/
+		void incrementarAno(long long anos){
+			data.ano+=anos;
+		}
+		
+		/*!
+			Método que incrementa os meses de forma a atualizar todas as unidades de tempo superiores.
+			\param meses Quantos meses serão incrementados no relogio.
+		*/
+		void incrementarMes(long long meses){
+			data.mes+=meses;
+			if (data.mes > 12) {
+				incrementarAno( data.mes/12 );
+				data.mes = data.mes % 12;
 			}
 		}
 		
 		/*!
-			Método que retorna quantos dias tem em determinado mês.
-			\param mes é o mês que se deseja retornar a quantidade de dias
-			\param ano é um inteiro que representa o ano.
+			Método que incrementa os dias de forma a atualizar todas as unidades de tempo superiores.
+			\param dias Quantos dias serão incrementados no relogio.
+		*/
+		void incrementarDia(long long dias){
+			while (dias > 0) {
+				data.dia++;
+				if (data.dia > getDiasNoMes()) {
+					incrementarMes(1);
+					data.dia = 1;
+				}
+				dias--;
+			}
+		}
+		
+		/*!
+			Método que incrementa as horas de forma a atualizar todas as unidades de tempo superiores.
+			\param hrs Quantas horas serão incrementados no relogio.
+		*/
+		void incrementarHora(long long hrs){
+			data.hora+=hrs;
+			if (data.hora >= 24) {
+				incrementarDia( data.hora/24 );
+				data.hora = data.hora % 24;
+			}
+		}
+		
+		/*!
+			Método que incrementa os minutos de forma a atualizar todas as unidades de tempo superiores.
+			\param mins Quantos minutos serão incrementados no relogio.
+		*/
+		void incrementarMinuto(long long mins){
+			data.minuto+=mins;
+			if (data.minuto >= 60) {
+				incrementarHora( data.minuto/60 );
+				data.minuto = data.minuto % 60;
+			}
+		}
+	
+		/*!
+			Método que incrementa os segundos de forma a atualizar todas as unidades de tempo superiores.
+			\param secs Quantos segundos serão incrementados no relogio.
+		*/
+		void incrementarSegundo(long long secs){
+			data.segundo+=secs;
+			if (data.segundo >= 60) {
+				incrementarMinuto( data.segundo/60 );
+				data.segundo = data.segundo % 60;
+			}
+		}
+		
+		/*!
+			Método que incrementa os microssegundos de forma a atualizar todas as unidades de tempo superiores.
+			\param mcsec Quantos microssegundos serão incrementados no relogio.
+		*/
+		void incrementarMicrossegundo(long long mcsec){
+			data.microssegundos+=mcsec;
+			if (data.microssegundos >= 1000000) {
+				incrementarSegundo( data.microssegundos/1000000 );
+				data.microssegundos = data.microssegundos % 1000000;
+			}
+		}
+		
+		/*!
+			Método que retorna quantos dias tem no mes atual.
 			\return Valor inteiro que representa quantos dias tem no mês.
 		*/
-		int getDiasNoMes(int mes, int ano) {
-			if (ano % 4 == 0 && mes == 2) { //se é ano bissexto e o mês é fevereiro
+		int getDiasNoMes() {
+			if (data.ano % 4 == 0 && data.mes == 2) { //se é ano bissexto e o mês é fevereiro
 				return 29;
 			} else {
-				return diasNoMes[mes-1];
+				return diasNoMes[data.mes-1];
 			}
 		}
 };
@@ -546,7 +596,6 @@ class Gerente {
 			// Entrando em um novo mes
 			if (quantidade6Horas == 0) { 
 				consumoMensal = 0;
-				relogio->novoMes();
 				calculaQuantidadeQuartosDeDia();
 			}
 			
@@ -735,8 +784,9 @@ class Gerente {
 		*/
 		void iniciar() {
 			Chronometer* cronPrincipal = new Chronometer();
+			Data data = relogio->getData();
 			
-			long long tempoQuePassou = ((relogio->getHora()*60 + relogio->getMinutosIniciais()) % (6*60)) * 60 * 1000000;
+			long long tempoQuePassou = ((data.hora*60 + data.minuto) % (6*60)) * 60 * 1000000;
 			long long timeTillNextWake;
 			long long milisecsEm6Horas = 6*60*60*1000000.0;
 			
@@ -763,7 +813,7 @@ class Gerente {
 		*/
 		int prioridadeAtual() {
 			Prioridades prioridades = tomada->getPrioridades();
-			unsigned int hour = relogio->getHora();
+			unsigned int hour = relogio->getData().hora;
 			int quarterOfDay = (int) hour / 6;
 			
 			switch(quarterOfDay){
@@ -809,10 +859,8 @@ class Gerente {
 			\return Valor inteiro que indica quantos dias faltam para o fim do mês.
 		*/
 		int diasRestantes() {
-			unsigned int ano = relogio->getAno();
-			unsigned int mes = relogio->getMes();
-			unsigned int diaAtual = relogio->getDia();
-			int diasNoMes = relogio->getDiasNoMes(mes, ano);
+			unsigned int diaAtual = relogio->getData().dia;
+			int diasNoMes = relogio->getDiasNoMes();
 			return (diasNoMes - diaAtual);		
 		}
 	
@@ -821,7 +869,7 @@ class Gerente {
 		*/
 		void calculaQuantidadeQuartosDeDia() {
 			quantidade6Horas = diasRestantes() * 4;
-			int hora = relogio->getHora();		
+			int hora = relogio->getData().hora;
 			// ajusta da quantidade para quando a tomada é criada depois do primeiro 1/4 do dia.
 			int quartoDoDia = (int) hora / 6;
 			quantidade6Horas = quantidade6Horas - quartoDoDia;		
