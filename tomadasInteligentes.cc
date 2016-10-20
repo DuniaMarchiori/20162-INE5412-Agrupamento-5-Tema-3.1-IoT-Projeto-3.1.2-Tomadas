@@ -6,6 +6,7 @@
 #include <utility/hash.h>
 #include <utility/random.h>
 
+
 #define INTERVALO_ENVIO_MENSAGENS 5 /*!< Intervalo(em minutos) em que são feitos envio e recebimento de mensagens entre as tomadas. */
 #define NUMERO_ENTRADAS_HISTORICO 28 /*!< Quantidade de entradas no histórico. Cada entrada corresponde ao consumo a cada 6 horas. */
 
@@ -87,7 +88,7 @@ class Mensageiro {
 				msg.prioridade = -1;
 			}
 			
-			return msg; // Retornar só a msg?
+			return msg;
 		}
 		
 		/*!
@@ -189,8 +190,9 @@ class Calendario {
 	Classe que representa uma tomada.
 */
 class Tomada {
-	private:
+	protected:
 		bool ligada; /*!< Variável booleana que indica se a tomada está ligada.*/
+	private:
 		Led *led; /*!< Variável que representa o LED.*/
 
 	public:
@@ -265,6 +267,8 @@ class TomadaComDimmer: public Tomada {
 	Classe que representa uma tomada controlada pelo EPOSMoteIII.
 */
 class TomadaInteligente: public Tomada {
+	protected:
+		int id; /*!< Variável que indica o tipo da tomada.*/
 	private:
 		Prioridades prioridades; /*!< Variável que contém as prioridade da tomada ao longo do dia.*/
 		float consumo; /*!< Variável que indica o consumo da tomada.*/
@@ -276,6 +280,7 @@ class TomadaInteligente: public Tomada {
 		*/
 		TomadaInteligente() {
 			consumo = 0;
+			id = 1; //indica uma TomadaInteligente
 		}
 	
 		/*!
@@ -341,14 +346,12 @@ class TomadaInteligente: public Tomada {
 				}
 				// Aplica uma variância ao ultimo consumo registrado, para simular um sistema real
 				// onde os valores são de certa forma consistentes.
-				float variacao = (90 + (Random::random() % 21)) / 100f; // valor de 0.9 até 1.1 ou 90% até 110%
+				float variacao = (90 + (Random::random() % 21)) / 100.0f; // valor de 0.9 até 1.1 ou 90% até 110%
 				consumo = consumo * variacao;
 			} else {
 				consumo = 0;
-			}
-			
-			return consumo;
-			
+			}			
+			return consumo;		
 		}
 
 		/*!
@@ -371,7 +374,9 @@ class TomadaMulti: public TomadaComDimmer, public TomadaInteligente {
 		/*!
 			Método construtor da classe
 		*/
-		//TomadaMulti();
+		TomadaMulti() {
+			id = 2; //indica uma TomadaInteligente com dimmer
+		}
 };
 
 
@@ -418,11 +423,11 @@ class Previsor {
 			\param quartosDeDia é a quantidade de quartos de dia(6 horas) que faltam para o mês acabar.
 			\return Valor previsto para o consumo total das tomadas.
 		*/
-		static float preverConsumoTotal(Simple_Hash<Dados, sizeof(Dados), int>* h, int quartosDeDia) {
+		static float preverConsumoTotal(Simple_Hash<Dados, sizeof(Dados), int>* h, int quartosDeDia, float minhaPrevisao) {
 			/*Cada previsão é para as próximas 6 horas. Assim, esse valor é multiplicado por quantas mais 6 horas faltam para acabar o mês 
 				para sabermos se o consumo está dentro do limite.*/
 
-			float total = 0, consumo;
+			float total = minhaPrevisao * quartosDeDia, consumo;
 			for(auto iter = h->begin(); iter != h->end(); iter++) {
 				//se iter não é vazio: begin() retorna um objeto vazio no inicio por algum motivo
 				if (iter != 0) {
@@ -474,7 +479,7 @@ class Gerente {
 			}
 			
 			//adiciona consumo no fim da fila (se está ligada)
-			//atualizaHistorico(tomada.getConsumo());
+			atualizaHistorico(tomada->getConsumo());
 			fazerPrevisaoConsumoProprio();
 			dadosEnviar.remetente = tomada->getEndereco();
 			dadosEnviar.ligada = tomada->estaLigada();
@@ -487,6 +492,7 @@ class Gerente {
 				if (minutoAtual - ultimoSend >= 1) { //envia a cada um minuto
 					enviarMensagemBroadcast(dadosEnviar);
 				} else {
+					dadosRecebidos = new Dados();
 					dadosRecebidos = &receberMensagem(); // pra tirar o & o receberMensagem precisa retornar um ponteiro
 					elemento = new List_Elements::Singly_Linked_Ordered<Dados, int>(dadosRecebidos,dadosRecebidos->remetente); //hash é indexada pelo endereço da tomada
 					atualizaHash(elemento);
@@ -496,13 +502,11 @@ class Gerente {
 
 			fazerPrevisaoConsumoTotal(); // considera todas as tomadas, mesmo as desligadas			
 			if (consumoTotalPrevisto > maximoConsumoMensal) { // se a previsão está acima do consumo máximo
-				if (deveDesligar()) {
-					tomada->desligar();
-				}
+				mantemConsumoDentroDoLimite(); //desliga as tomadas necessárias para manter o consumo dentro do limite
 				while (relogio->date().minute() < minutosIniciais + INTERVALO_ENVIO_MENSAGENS + 1); // necessário?
 			} else { // se a previsão está dentro do consumo máximo
-				//liga todas
-				//podeLigar();	-> tomada->ligar();			
+				//liga todas as tomadas
+				tomada->ligar();			
 			}
 			quantidade6Horas--;
 		}
@@ -589,7 +593,7 @@ class Gerente {
 			Método que atualiza o valor da previsão do consumo total das to até o fim do mês. O valor é armazenado na variável global consumoTotalPrevisto. 
 		*/
 		void fazerPrevisaoConsumoTotal() {
-			consumoTotalPrevisto = Previsor::preverConsumoTotal(hash, quantidade6Horas);
+			consumoTotalPrevisto = Previsor::preverConsumoTotal(hash, quantidade6Horas, consumoProprioPrevisto);
 		}
 
 		/*!
@@ -628,7 +632,26 @@ class Gerente {
 			Método que verifica se a tomada deve desligar para manter o consumo mensal dentro do consumo máximo.
 			\return valor booleano que indica se a tomada deve desligar.
 		*/
-		bool deveDesligar(); //verificar se pode dimmerizar
+		void mantemConsumoDentroDoLimite() { 
+			float consumoCalculado = 0, consumo, diferencaConsumo;
+			for(auto iter = hash->begin(); iter != hash->end(); iter++) {
+				//se iter não é vazio: begin() retorna um objeto vazio no inicio por algum motivo
+				if (iter != 0) {
+					if(prioridadeAtual() > iter->object()->prioridade) { //outras tomadas que têm prioridade abaixo da minha prioridade
+						consumo = iter->object()->consumoPrevisto;
+						consumoCalculado += consumo * quantidade6Horas;
+					}
+				}
+			}
+			
+			diferencaConsumo = consumoTotalPrevisto - consumoCalculado;
+			if (diferencaConsumo <= maximoConsumoMensal) {
+				//liga a tomada
+				tomada->ligar();
+			} else {
+				//precisa desligar ou dimmerizar, verificar se há outras tomadas com a mesma prioridade
+			}		
+		}
 	
 		/*!
 			Método que calcula quantos dias restam para o mês acabar.
