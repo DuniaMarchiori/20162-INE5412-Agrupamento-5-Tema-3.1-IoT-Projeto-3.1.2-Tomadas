@@ -35,6 +35,7 @@ struct Dados {
     Address remetente; /*!< Endereço da tomada remetente da mensagem. */
     bool ligada; /*!< Indica se a tomada remetente está ligada. */
     float consumoPrevisto; /*!< Corresponde ao consumo previsto da tomada. */
+	float ultimoConsumo; /*!< Corresponde ao valor do consumo da tomada nas últimas 6 horas. */
     int prioridade; /*!< Corresponde à prioridade da tomada. */
 };
 
@@ -86,6 +87,7 @@ class Mensageiro {
 			if (!hasMsg) { // Se não foi recebida nenhuma mensagem
 				msg.remetente = -1;
 				msg.consumoPrevisto = -1;
+				msg.ultimoConsumo = -1;
 				msg.prioridade = -1;
 			}
 			
@@ -546,7 +548,7 @@ class Gerente {
 			unsigned int minutosIniciais = relogio->date().minute();
 			
 			if (quantidade6Horas == 0) {
-				consumoMensal = 0; //necessário?
+				consumoMensal = 0;
 				relogio->novoMes();
 				calculaQuantidadeQuartosDeDia();
 			}
@@ -557,6 +559,7 @@ class Gerente {
 			dadosEnviar.remetente = tomada->getEndereco();
 			dadosEnviar.ligada = tomada->estaLigada();
 			dadosEnviar.consumoPrevisto = consumoProprioPrevisto;
+			dadosEnviar.ultimoConsumo = historico[NUMERO_ENTRADAS_HISTORICO - 1];
 			dadosEnviar.prioridade = prioridadeAtual();
 			
 			unsigned int minutoAtual = relogio->date().minute();
@@ -574,8 +577,9 @@ class Gerente {
 				minutoAtual = relogio->date().minute();		
 			}
 
+			atualizaConsumoMensal();
 			fazerPrevisaoConsumoTotal(); // considera todas as tomadas, mesmo as desligadas
-			if (consumoTotalPrevisto > maximoConsumoMensal) { // se a previsão está acima do consumo máximo
+			if (consumoTotalPrevisto > (maximoConsumoMensal - consumoMensal)) { // se a previsão está acima do consumo máximo
 				mantemConsumoDentroDoLimite(); //desliga as tomadas necessárias para manter o consumo dentro do limite
 				while (relogio->date().minute() < minutosIniciais + INTERVALO_ENVIO_MENSAGENS + 1); // necessário?
 			} else { // se a previsão está dentro do consumo máximo
@@ -609,11 +613,24 @@ class Gerente {
 			if (d != 0) {
 					d->ligada = e->object()->ligada;
 					d->consumoPrevisto = e->object()->consumoPrevisto;
+					d->ultimoConsumo = e->object()->ultimoConsumo;
 					d->prioridade = e->object()->prioridade;
 			} else if(e->object()->remetente != (Address)-1) { 
 				//elemento não está na hash e não é um elemento "vazio"(remetente é igual a -1 quando não há mensagem recebida)
 				hash->insert(e);	
 			}
+		}
+	
+		/*!
+			Método que calcula quanta energia já foi consumida no mês e atualiza a variável global consumoMensal.
+		*/
+		void atualizaConsumoMensal() {
+			for(auto iter = hash->begin(); iter != hash->end(); iter++) {
+				//se iter não é vazio: begin() retorna um objeto vazio no inicio por algum motivo
+				if (iter != 0) {
+					consumoMensal += iter->object()->ultimoConsumo;
+				}
+			}			
 		}
 
 	public:
@@ -735,7 +752,7 @@ class Gerente {
 			}
 			
 			diferencaConsumo = consumoTotalPrevisto - consumoCalculado;
-			if (diferencaConsumo <= maximoConsumoMensal) {
+			if (diferencaConsumo <= (maximoConsumoMensal - consumoMensal)) {
 				//liga a tomada
 				tomada->ligar();
 			} else {
