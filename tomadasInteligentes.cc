@@ -78,17 +78,17 @@ class Mensageiro {
 			Método que recebe uma mensagem.
 			\return Retorna a mensagem recebida.
 		*/
-		Dados receberMensagem() {
+		Dados* receberMensagem() {
 			Address remetente;
 			Protocol prot;
-			Dados msg;
-			bool hasMsg = nic->receive(&remetente, &prot, &msg, sizeof msg);
+			Dados* msg;
+			bool hasMsg = nic->receive(&remetente, &prot, msg, sizeof msg);
 			
 			if (!hasMsg) { // Se não foi recebida nenhuma mensagem
-				msg.remetente = -1;
-				msg.consumoPrevisto = -1;
-				msg.ultimoConsumo = -1;
-				msg.prioridade = -1;
+				msg->remetente = -1;
+				msg->consumoPrevisto = -1;
+				msg->ultimoConsumo = -1;
+				msg->prioridade = -1;
 			}
 			
 			return msg;
@@ -121,19 +121,18 @@ class Relogio {
 			Método que inicializa o vetor com a quantidade de dias em cada mẽs.
 		*/
 		void inicializarMeses() {
-			// 0: Janeiro, 1: Fevereiro, ..., 11: Dezembro
-			diasNoMes[0] = 31; 
-			diasNoMes[1] = 28;
-			diasNoMes[2] = 31;
-			diasNoMes[3] = 30;
-			diasNoMes[4] = 31;
-			diasNoMes[5] = 30;
-			diasNoMes[6] = 31;
-			diasNoMes[7] = 31;
-			diasNoMes[8] = 30;
-			diasNoMes[9] = 31;
-			diasNoMes[10] = 30;
-			diasNoMes[11] =	31;		
+			diasNoMes[0]  = 31; // Janeiro;
+			diasNoMes[1]  = 28; // Fevereiro;
+			diasNoMes[2]  = 31; // Março;
+			diasNoMes[3]  = 30; // Abril;
+			diasNoMes[4]  = 31; // Maio;
+			diasNoMes[5]  = 30; // Junho;
+			diasNoMes[6]  = 31; // Julho;
+			diasNoMes[7]  = 31; // Agosto;
+			diasNoMes[8]  = 30; // Setembro;
+			diasNoMes[9]  = 31; // Outubro;
+			diasNoMes[10] = 30; // Novembro;
+			diasNoMes[11] =	31;	// Dezembro.
 		}
 		
 	public:
@@ -538,56 +537,101 @@ class Gerente {
 		Mensageiro* mensageiro;	/*!< Objeto que provê a comunicação da placa com as outras.*/
 		Simple_Hash<Dados, sizeof(Dados), int>* hash; /*!< Hash que guarda informações recebidas sobre as outras tomadas indexadas pelo endereço da tomada.*/
 	
+
 		/*!
-			Método que .
+			Método que realiza o trabalho da placa, fazendo sua previsão, sincronização e ajustes no estado da tomada conforme o necessário.
 		*/
-		void sincronizar() {
-			bool fim = false;
-			Dados *dadosRecebidos, dadosEnviar;
-			List_Elements::Singly_Linked_Ordered<Dados, int>* elemento; //elemento da hash
-			unsigned int minutosIniciais = relogio->date().minute();
+		void administrar() {
 			
-			if (quantidade6Horas == 0) {
+			// Entrando em um novo mes
+			if (quantidade6Horas == 0) { 
 				consumoMensal = 0;
 				relogio->novoMes();
 				calculaQuantidadeQuartosDeDia();
 			}
 			
-			//adiciona consumo no fim da fila (se está ligada)
+			// Preparando a previsao propria.
 			atualizaHistorico(tomada->getConsumo());
 			fazerPrevisaoConsumoProprio();
-			dadosEnviar.remetente = tomada->getEndereco();
-			dadosEnviar.ligada = tomada->estaLigada();
-			dadosEnviar.consumoPrevisto = consumoProprioPrevisto;
-			dadosEnviar.ultimoConsumo = historico[NUMERO_ENTRADAS_HISTORICO - 1];
-			dadosEnviar.prioridade = prioridadeAtual();
 			
-			unsigned int minutoAtual = relogio->date().minute();
-			unsigned int ultimoSend = minutoAtual;
-			while (minutoAtual < minutosIniciais + INTERVALO_ENVIO_MENSAGENS) {
-				//tem que atualizar o relogio quando a tomada é acordada
-				if (minutoAtual - ultimoSend >= 1) { //envia a cada um minuto
+			// Preparando Dados para enviar.
+			Dados dadosEnviar;
+			dadosEnviar = preparaEnvio();
+			
+			// Sincronização entre as placas.
+			sincronizar(dadosEnviar);
+			
+			// Atualiza as previsão baseado nos novos dados recebidos.
+			atualizaConsumoMensal();
+			fazerPrevisaoConsumoTotal(); // Considera todas as tomadas, mesmo as desligadas.
+			
+			// Toma decisões dependendo de como esta o consumo do sistema.
+			administrarConsumo();
+			
+			// Atualiza a variavel de controle que indica quantas verificações ainda serão feitas dentro desse mês.
+			quantidade6Horas--;
+		}
+		
+		
+		/*!
+			Método que prepara os dados a serem enviados para as outras tomadas.
+			\return Ponteiro para os Dados a serem enviados, com seus valores ajeitados.
+		*/
+		Dados preparaEnvio() {
+			Dados dados;
+			dados.remetente = tomada->getEndereco();
+			dados.ligada = tomada->estaLigada();
+			dados.consumoPrevisto = consumoProprioPrevisto;
+			dados.ultimoConsumo = historico[NUMERO_ENTRADAS_HISTORICO - 1];
+			dados.prioridade = prioridadeAtual();
+			return dados;
+		}
+		
+		
+		/*!
+			Método que sincroniza as placas, enviando e recebendo mensagens com dados.
+			\param dadosEnviar é a struct que contém os dados que esta placa estará enviando.
+		*/
+		void sincronizar(Dados dadosEnviar) {
+			Dados* dadosRecebidos;
+			List_Elements::Singly_Linked_Ordered<Dados, int>* elemento; // Elemento da hash.
+			
+			Chronometer* cronSinc = new Chronometer();
+
+			long long tempoDeSinc = INTERVALO_ENVIO_MENSAGENS*60*1000000; // Minutos pra Microssegundos.
+			long long nextSend = 0;
+			cronSinc->reset();
+			cronSinc->start();
+			long long cronTime = cronSinc->read();
+			
+			while (cronTime < tempoDeSinc) {
+				if (cronTime > nextSend) {
 					enviarMensagemBroadcast(dadosEnviar);
+					nextSend += 30000000; // 30 segundos.
 				} else {
-					dadosRecebidos = new Dados();
-					dadosRecebidos = &receberMensagem(); // pra tirar o & o receberMensagem precisa retornar um ponteiro
-					elemento = new List_Elements::Singly_Linked_Ordered<Dados, int>(dadosRecebidos,dadosRecebidos->remetente); //hash é indexada pelo endereço da tomada
+					dadosRecebidos = receberMensagem();
+					elemento = new List_Elements::Singly_Linked_Ordered<Dados, int>(dadosRecebidos,dadosRecebidos->remetente); // Hash é indexada pelo endereço da tomada.
 					atualizaHash(elemento);
 				}
-				minutoAtual = relogio->date().minute();		
+				cronTime = cronSinc->read();
 			}
-
-			atualizaConsumoMensal();
-			fazerPrevisaoConsumoTotal(); // considera todas as tomadas, mesmo as desligadas
-			if (consumoTotalPrevisto > (maximoConsumoMensal - consumoMensal)) { // se a previsão está acima do consumo máximo
-				mantemConsumoDentroDoLimite(); //desliga as tomadas necessárias para manter o consumo dentro do limite
-				while (relogio->date().minute() < minutosIniciais + INTERVALO_ENVIO_MENSAGENS + 1); // necessário?
+			
+			delete cronSinc;
+		}
+		
+		
+		/*!
+			Método que verifica se consumo previsto esta acima do maximo e se alguma decisao deve ser tomada.
+		*/
+		void administrarConsumo() {
+			if (consumoTotalPrevisto > (maximoConsumoMensal - consumoMensal)) { // Se a previsão está acima do consumo máximo.
+				mantemConsumoDentroDoLimite(); // Desliga as tomadas necessárias para manter o consumo dentro do limite.
 			} else { // se a previsão está dentro do consumo máximo
 				//liga todas as tomadas
 				tomada->ligar();			
 			}
-			quantidade6Horas--;
 		}
+
 	
 		/*!
 			Método que atualiza o vetor de histórico de consumo da tomada com o novo consumo. Consumo nulo(tomada desligada) não é inserido.
@@ -626,7 +670,7 @@ class Gerente {
 		*/
 		void atualizaConsumoMensal() {
 			for(auto iter = hash->begin(); iter != hash->end(); iter++) {
-				//se iter não é vazio: begin() retorna um objeto vazio no inicio por algum motivo
+				// Se iter não é vazio: begin() retorna um objeto vazio no inicio por algum motivo
 				if (iter != 0) {
 					consumoMensal += iter->object()->ultimoConsumo;
 				}
@@ -666,7 +710,7 @@ class Gerente {
 		/*!
 			Método que recebe mensagem das outras tomadas.
 		*/
-		Dados receberMensagem() {
+		Dados* receberMensagem() {
 			return mensageiro->receberMensagem();
 		}
 
@@ -687,10 +731,10 @@ class Gerente {
 
 		/*!
 			Método que realiza a sincronização entre as tomadas a cada 6 horas.
-			\sa sincronizar()
+			\sa administrar()
 		*/
 		void iniciar() {
-			Chronometer* cronometroPrincipal = new Chronometer();
+			Chronometer* cronPrincipal = new Chronometer();
 			
 			long long tempoQuePassou = ((relogio->getHora()*60 + relogio->getMinutosIniciais()) % (6*60)) * 60 * 1000000;
 			long long timeTillNextWake;
@@ -702,13 +746,13 @@ class Gerente {
 				
 				Alarm::delay(timeTillNextWake);
 				
-				cronometroPrincipal->reset();
-				cronometroPrincipal->start();
+				cronPrincipal->reset();
+				cronPrincipal->start();
 				
-				sincronizar();
+				administrar();
 				
-				cronometroPrincipal->stop();
-				tempoQuePassou = cronometroPrincipal->read();
+				cronPrincipal->stop();
+				tempoQuePassou = cronPrincipal->read();
 
 			}
 		}
