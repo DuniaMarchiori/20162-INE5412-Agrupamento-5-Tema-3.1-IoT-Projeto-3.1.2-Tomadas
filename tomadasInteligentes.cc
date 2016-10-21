@@ -13,6 +13,8 @@
 
 using namespace EPOS;
 
+OStream cout;
+
 typedef NIC::Address Address;
 typedef NIC::Protocol Protocol;
 
@@ -173,7 +175,7 @@ class Relogio {
 			return data;
 		}
 
-		/*!
+		/*!a
 			Método que atualiza os dados do relogio, baseado no tempo desde a ultima requisicao.
 		*/
 		void atualizaRelogio() {
@@ -286,32 +288,31 @@ class Relogio {
 */
 class Led {
 	private:
-		//GPIO *led; /*!< Variável que representa o LED.*/
+		GPIO *led; /*!< Variável que representa o LED.*/
 
 	public:
 		/*!
 			Método construtor da classe
 		*/
 		Led() {
-			//led = new GPIO('C',3, GPIO::OUTPUT);
+			led = new GPIO('C',3, GPIO::OUTPUT);
 		}
 
 		/*!
 			Método que acende o LED do EPOSMoteIII.
 		*/
     	void acenderLED() {
-    		//led->set(true);
+    		led->set(true);
     	}
 
     	/*!
 			Método que desliga o LED do EPOSMoteIII.
     	*/
     	void desligarLED() {
-    		//led->set(false);
+    		led->set(false);
     	}
 
 };
-
 
 //----------------------------------------------------------------------------
 //!  Classe Tomada
@@ -358,13 +359,12 @@ class Tomada {
 		}
 };
 
-
 //----------------------------------------------------------------------------
 //!  Classe TomadaComDimmer
 /*!
 	Classe que representa uma tomada com dimmer.
 */
-class TomadaComDimmer: public Tomada {
+class TomadaComDimmer: virtual public Tomada {
 	private:
 		float dimPorcentagem; /*!< Váriavel float que indica a porcentagem de dimmerização da tomada.*/
 
@@ -372,7 +372,9 @@ class TomadaComDimmer: public Tomada {
 		/*!
 			Método construtor da classe
 		*/
-		//TomadaComDimmer();
+		TomadaComDimmer() {
+			dimPorcentagem = 1; // 100%
+		}
 
 		/*!
 			Método que retorna a a porcentagem de dimmerização da tomada.
@@ -384,24 +386,24 @@ class TomadaComDimmer: public Tomada {
 
 		/*!
 			Método que dimmeriza a tomada de acordo com o porcentagem passada.
-			\param p é a porcentagem de dimmerização.
+			\param porcentagem é a porcentagem de dimmerização.
 		*/
-		void dimmerizar(float p);
+		void dimmerizar(float porcentagem) {
+			dimPorcentagem = porcentagem;
+		}
 };
-
 
 //----------------------------------------------------------------------------
 //!  Classe TomadaInteligente
 /*!
 	Classe que representa uma tomada controlada pelo EPOSMoteIII.
 */
-class TomadaInteligente: public Tomada {
+class TomadaInteligente: virtual public Tomada {
 	protected:
 		int id; /*!< Variável que indica o tipo da tomada.*/
 	private:
 		Prioridades prioridades; /*!< Variável que contém as prioridade da tomada ao longo do dia.*/
 		float consumo; /*!< Variável que indica o consumo da tomada.*/
-		int endereco; /*!< Variável que indica o endereço da tomada.*/
 
 	public:
 		/*!
@@ -410,6 +412,14 @@ class TomadaInteligente: public Tomada {
 		TomadaInteligente() {
 			consumo = 0;
 			id = 1; //indica uma TomadaInteligente
+		}
+		
+		/*!
+			Método que devolve o ID que representa o tipo de tomada.
+			\return o ID dessa tomada.
+		*/
+		int getId(){
+			return id;
 		}
 	
 		/*!
@@ -470,28 +480,23 @@ class TomadaInteligente: public Tomada {
 		float getConsumo() {
 				
 			if (ligada) {
+				unsigned int rand;
 				if (consumo == 0) {
-					consumo = 200 + Random::random() % (500-200+1);
+					rand = Random::random();
+					consumo = 200 + (rand % (500-200+1));
 				}
-				// Aplica uma variância ao ultimo consumo registrado, para simular um sistema real
-				// onde os valores são de certa forma consistentes.
-				float variacao = (90 + (Random::random() % 21)) / 100.0f; // valor de 0.9 até 1.1 ou 90% até 110%
-				consumo = consumo * variacao;
+				// Aplica uma variacao ao ultimo consumo registrado, para simular um sistema real onde os valores são de certa forma consistentes.
+				rand = Random::random();
+				float variacao = (90 + (rand % 21)) / 100.0f; // valor de 0.9 até 1.1 ou 90% até 110%
+
+				consumo = (consumo+variacao) * variacao;
 			} else {
 				consumo = 0;
 			}			
 			return consumo;		
 		}
 
-		/*!
-			Método que retona o endereço da tomada.
-			\return Valor inteiro que indica o endereço da tomada.
-		*/
-		int getEndereco() {
-			return endereco;
-		}
 };
-
 
 //----------------------------------------------------------------------------
 //!  Classe TomadaMulti
@@ -507,7 +512,6 @@ class TomadaMulti: public TomadaComDimmer, public TomadaInteligente {
 			id = 2; //indica uma TomadaInteligente com dimmer
 		}
 };
-
 
 //----------------------------------------------------------------------------
 //!  Classe Previsor
@@ -569,7 +573,6 @@ class Previsor {
 
 };
 
-
 //----------------------------------------------------------------------------
 //!  Classe Gerente
 /*!
@@ -629,7 +632,7 @@ class Gerente {
 		*/
 		Dados preparaEnvio() {
 			Dados dados;
-			dados.remetente = tomada->getEndereco();
+			dados.remetente = mensageiro->obterEnderecoNIC();
 			dados.ligada = tomada->estaLigada();
 			dados.consumoPrevisto = consumoProprioPrevisto;
 			dados.ultimoConsumo = historico[NUMERO_ENTRADAS_HISTORICO - 1];
@@ -877,14 +880,20 @@ class Gerente {
 		}
 };
 
-
 //----------------------------------------------------------------------------
 //!  Método Main
 /*!
 	Método inicial do programa.
 */
 int main() {
-	TomadaInteligente* t = new TomadaInteligente(); 
+	Alarm::delay(2*1000000);
+	
+	TomadaMulti* t = new TomadaMulti();
+	
+	while (true) {
+		
+	}
+	
 	//t.setPrioridades
 	//Relogio r;
 	//Gerente* g = new Gerente(t);
