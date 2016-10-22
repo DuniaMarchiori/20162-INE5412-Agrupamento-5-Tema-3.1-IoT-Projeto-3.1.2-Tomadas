@@ -403,7 +403,7 @@ class TomadaComDimmer: virtual public Tomada {
 */
 class TomadaInteligente: virtual public Tomada {
 	protected:
-		int id; /*!< Variável que indica o tipo da tomada.*/
+		int tipo; /*!< Variável que indica o tipo da tomada.*/
 	private:
 		Prioridades prioridades; /*!< Variável que contém as prioridade da tomada ao longo do dia.*/
 		float consumo; /*!< Variável que indica o consumo da tomada.*/
@@ -414,15 +414,15 @@ class TomadaInteligente: virtual public Tomada {
 		*/
 		TomadaInteligente() {
 			consumo = 0;
-			id = 1; //indica uma TomadaInteligente
+			tipo = 1; //indica uma TomadaInteligente
 		}
 		
 		/*!
-			Método que devolve o ID que representa o tipo de tomada.
-			\return o ID dessa tomada.
+			Método que devolve o tipo de tomada.
+			\return o tipo dessa tomada.
 		*/
-		int getId(){
-			return id;
+		int getTipo(){
+			return tipo;
 		}
 	
 		/*!
@@ -481,6 +481,9 @@ class TomadaInteligente: virtual public Tomada {
 			\return Valor float que indica o consumo atual da tomada. Caso esteja desligada, o valor retornado é 0.
 		*/
 		float getConsumo() {
+			
+			// Metodo criado para simular a analise de consumo de uma tomada a cada 6 horas.
+			// Em um sistema real este metodo retornaria o consumo da tomada.
 				
 			if (ligada) {
 				unsigned int rand;
@@ -490,7 +493,7 @@ class TomadaInteligente: virtual public Tomada {
 				}
 				// Aplica uma variacao ao ultimo consumo registrado, para simular um sistema real onde os valores são de certa forma consistentes.
 				rand = Random::random();
-				float variacao = (90 + (rand % 21)) / 100.0f; // valor de 0.9 até 1.1 ou 90% até 110%
+				float variacao = (90 + (rand % 21)) / 100.0f; // Valor de 0.9 até 1.1 ou 90% até 110%
 
 				consumo = (consumo+variacao) * variacao;
 			} else {
@@ -512,7 +515,7 @@ class TomadaMulti: public TomadaComDimmer, public TomadaInteligente {
 			Método construtor da classe
 		*/
 		TomadaMulti() {
-			id = 2; //indica uma TomadaInteligente com dimmer
+			tipo = 2; // Indica uma TomadaInteligente com dimmer
 		}
 };
 
@@ -887,12 +890,12 @@ class Gerente {
 								// Se pode dimmerizar
 								//calcula porcentagem de dimmerização
 							} else {
-								tomada->desliga();
+								tomada->desligar();
 							}
 						}
 						
 					} else {
-						tomada->desliga();
+						tomada->desligar();
 					}
 					
 				} else { // Se não há outras tomadas com a mesma prioridade que essa		
@@ -900,7 +903,7 @@ class Gerente {
 					if ((diferencaConsumo - consumoProprioPrevisto) < consumoRestante && tomada->getTipo() == 2) {
 						//calcula porcentagem de dimmertização
 					} else { // Se não tem dimmer
-						tomada->desliga();
+						tomada->desligar();
 					}
 				}	
 			}		
