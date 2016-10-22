@@ -199,7 +199,7 @@ class Relogio {
 			Método que incrementa os meses de forma a atualizar todas as unidades de tempo superiores.
 			\param meses Quantos meses serão incrementados no relogio.
 		*/
-		void incrementarMes(long long meses){		
+		void incrementarMes(long long meses){
 			data.mes+=meses;
 			if (data.mes > 12) {
 				incrementarAno( data.mes/12 );
@@ -547,31 +547,31 @@ class Previsor {
             float previsao =   (1/406.0) * historico[0]
 							+  (2/406.0) * historico[1]
 							+  (3/406.0) * historico[2]
-							+  (4/406.0) * historico[3]   //3%
+							+  (4/406.0) * historico[3]
 							+  (5/406.0) * historico[4]
 							+  (6/406.0) * historico[5]
 							+  (7/406.0) * historico[6]
-							+  (8/406.0) * historico[7]   //8%
+							+  (8/406.0) * historico[7]					
 							+  (9/406.0) * historico[8]
 							+ (10/406.0) * historico[9]
 							+ (11/406.0) * historico[10]
-							+ (12/406.0) * historico[11]  //12%
+							+ (12/406.0) * historico[11]
 							+ (13/406.0) * historico[10]
 							+ (14/406.0) * historico[13]
 							+ (15/406.0) * historico[14]
-							+ (16/406.0) * historico[15]  //14%
+							+ (16/406.0) * historico[15]
 							+ (17/406.0) * historico[16]
 							+ (18/406.0) * historico[17]
 							+ (19/406.0) * historico[18]
-							+ (20/406.0) * historico[19]  //18%
+							+ (20/406.0) * historico[19]
 							+ (21/406.0) * historico[20]
 							+ (22/406.0) * historico[21]
 							+ (23/406.0) * historico[22]
-							+ (24/406.0) * historico[23]  //19%
+							+ (24/406.0) * historico[23]
 							+ (25/406.0) * historico[24]
 							+ (26/406.0) * historico[25]
 							+ (27/406.0) * historico[26]
-							+ (28/406.0) * historico[27]; //26%
+							+ (28/406.0) * historico[27];
         	return previsao;
     	}
 
