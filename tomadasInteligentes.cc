@@ -55,6 +55,9 @@ struct Data {
 	unsigned long long microssegundos; /*!< Variável que representa os microssegundos atuais.*/
 };
 
+typedef List_Elements::Singly_Linked_Ordered<Dados, Address> Hash_Element;
+typedef Simple_Hash<Dados, sizeof(Dados), Address> Tabela;
+
 //----------------------------------------------------------------------------
 //!  Classe Mensageiro
 /*!
@@ -97,19 +100,18 @@ class Mensageiro {
 		Dados* receberMensagem() {
 			Address* remetente;
 			Protocol* prot;
-			Dados msg;
-			bool hasMsg = nic->receive(remetente, prot, &msg, sizeof msg);
+			Dados* msg = new Dados();
+			bool hasMsg = nic->receive(remetente, prot, msg, sizeof *msg);
 			
 			if (!hasMsg) { // Se não foi recebida nenhuma mensagem
-				msg.remetente = -1;
-				msg.ligada = 0;
-				msg.consumoPrevisto = -1;
-				msg.ultimoConsumo = -1;
-				msg.prioridade = -1;
+				msg->remetente = -1;
+				msg->ligada = 0;
+				msg->consumoPrevisto = -1;
+				msg->ultimoConsumo = -1;
+				msg->prioridade = -1;
 			}
 			
-			Dados* msgP = &msg;
-			return msgP;
+			return msg;
 		}
 		
 		/*!
@@ -572,10 +574,11 @@ class Previsor {
 			\param quartosDeDia é a quantidade de quartos de dia(6 horas) que faltam para o mês acabar.
 			\return Valor previsto para o consumo total das tomadas.
 		*/
-		static float preverConsumoTotal(Simple_Hash<Dados, sizeof(Dados), int>* h, int quartosDeDia, float minhaPrevisao) {
+		static float preverConsumoTotal(Tabela* h, int quartosDeDia, float minhaPrevisao) {
 			/*Cada previsão é para as próximas 6 horas. Assim, esse valor é multiplicado por quantas mais 6 horas faltam para acabar o mês para sabermos se o consumo está dentro do limite.*/
 
-			float total = minhaPrevisao * quartosDeDia, consumo;
+			float total = minhaPrevisao * quartosDeDia;
+			float consumo;
 			for(auto iter = h->begin(); iter != h->end(); iter++) {
 				//se iter não é vazio: begin() retorna um objeto vazio no inicio por algum motivo
 				if (iter != 0) {
@@ -604,7 +607,7 @@ class Gerente {
 		int quantidade6Horas; /*!< Variável que indica a quantidade de quartos de dia(6 horas) que faltam para o fim do mês.*/
 		Relogio* relogio; /*!< Objeto que possui informações como data e hora.*/
 		Mensageiro* mensageiro;	/*!< Objeto que provê a comunicação da placa com as outras.*/
-		Simple_Hash<Dados, sizeof(Dados), int>* hash; /*!< Hash que guarda informações recebidas sobre as outras tomadas indexadas pelo endereço da tomada.*/
+		Tabela* hash; /*!< Hash que guarda informações recebidas sobre as outras tomadas indexadas pelo endereço da tomada.*/
 	
 
 		/*!
@@ -662,7 +665,7 @@ class Gerente {
 		*/
 		void sincronizar(Dados dadosEnviar) {
 			Dados* dadosRecebidos;
-			List_Elements::Singly_Linked_Ordered<Dados, int>* elemento; // Elemento da hash.
+			Hash_Element* elemento; // Elemento da hash.
 			
 			Chronometer* cronSinc = new Chronometer();
 
@@ -678,7 +681,7 @@ class Gerente {
 					nextSend += 30000000; // 30 segundos.
 				} else {
 					dadosRecebidos = receberMensagem();
-					elemento = new List_Elements::Singly_Linked_Ordered<Dados, int>(dadosRecebidos,dadosRecebidos->remetente); // Hash é indexada pelo endereço da tomada.
+					elemento = new Hash_Element(dadosRecebidos,dadosRecebidos->remetente); // Hash é indexada pelo endereço da tomada.
 					atualizaHash(elemento);
 				}
 				cronTime = cronSinc->read();
@@ -720,7 +723,7 @@ class Gerente {
 			Método que atualiza a entrada da hash correspondente ao elemente passado por parâmetro. Se ele não existir, é adicionado.
 			\param e é o elemento a ser atualizado ou adicionado na hash.
 		*/
-		void atualizaHash(List_Elements::Singly_Linked_Ordered<Dados, int>* e) {
+		void atualizaHash(Hash_Element* e) {
 			Dados* d =  hash->search_key(e->object()->remetente)->object();
 			if (d != 0) {
 					d->ligada = e->object()->ligada;
@@ -755,7 +758,7 @@ class Gerente {
 			calculaQuantidadeQuartosDeDia();
 			consumoMensal = 0;
 			mensageiro = new Mensageiro();
-			hash = new Simple_Hash<Dados, sizeof(Dados), int>();
+			hash = new Tabela();
 			historico = new float[NUMERO_ENTRADAS_HISTORICO];
 			//inicializar historico com 0
 		}
@@ -910,16 +913,6 @@ class Gerente {
 		}
 	
 		/*!
-			Método que calcula quantos dias restam para o mês acabar.
-			\return Valor inteiro que indica quantos dias faltam para o fim do mês.
-		*/
-		int diasRestantes() {
-			unsigned int diaAtual = relogio->getData().dia;
-			int diasNoMes = relogio->getDiasNoMes();
-			return (diasNoMes - diaAtual);		
-		}
-	
-		/*!
 			Método que calcula quantos 1/4 de dia faltam para o fim do mês. O valor é armazenado na variável global quantidade6Horas.
 		*/
 		void calculaQuantidadeQuartosDeDia() {
@@ -928,6 +921,16 @@ class Gerente {
 			// ajusta da quantidade para quando a tomada é criada depois do primeiro 1/4 do dia.
 			int quartoDoDia = (int) hora / 6;
 			quantidade6Horas = quantidade6Horas - quartoDoDia;		
+		}
+		
+		/*!
+			Método que calcula quantos dias restam para o mês acabar.
+			\return Valor inteiro que indica quantos dias faltam para o fim do mês.
+		*/
+		int diasRestantes() {
+			unsigned int diaAtual = relogio->getData().dia;
+			int diasNoMes = relogio->getDiasNoMes();
+			return (diasNoMes - diaAtual);		
 		}
 };
 
@@ -939,39 +942,55 @@ class Gerente {
 int main() {
 	
 	Alarm::delay(2*1000000);
-	
+
 	cout << "Start" << endl << endl;
 	
-	TomadaInteligente* t = new TomadaInteligente();
-	t->ligar();
+	Mensageiro* m = new Mensageiro();
 	
-	float hist[NUMERO_ENTRADAS_HISTORICO];
-	for (int i = 0; i < NUMERO_ENTRADAS_HISTORICO; i++) {
-		hist[i] = 0;
-	}
+	Tabela* h = new Tabela();;
+
+	Hash_Element* e0;
+	Hash_Element* e1;
+	Hash_Element* e2;
+	Dados* dados0 = new Dados();
+	Dados* dados1 = new Dados();
+	Dados* dados2 = new Dados();
 	
-	float previsao;
+	dados0->remetente = m->obterEnderecoNIC();
+	dados0->ligada = true;
+	dados0->consumoPrevisto = 100;
+	dados0->ultimoConsumo = 200;
+	dados0->prioridade = 0;
 	
-	unsigned long long j = 0;
-	while (true) {
-		j++;
-		previsao = Previsor::preverConsumoProprio(hist);
-		cout << "Iretacao " << j << endl;
-		cout << "Consumo previsto: " << previsao << endl;
-		cout << "Consumo efetivo: " << hist[NUMERO_ENTRADAS_HISTORICO-1] << endl;
-		cout << "Erro: " << (previsao - hist[NUMERO_ENTRADAS_HISTORICO-1]) << endl << endl;
-		Alarm::delay(1*1000000);
-		
-		for (int i = 0; i < (NUMERO_ENTRADAS_HISTORICO-1); i++) {
-			hist[i] = hist[i+1];
+	dados1->remetente = m->obterEnderecoNIC();
+	dados1->ligada = true;
+	dados1->consumoPrevisto = 110;
+	dados1->ultimoConsumo = 201;
+	dados1->prioridade = 1;
+	
+	dados2->remetente = m->obterEnderecoNIC();
+	dados2->ligada = true;
+	dados2->consumoPrevisto = 120;
+	dados2->ultimoConsumo = 202;
+	dados2->prioridade = 2;
+	
+	cout << dados0->remetente << endl;
+	cout << dados1->remetente << endl;
+	cout << dados2->remetente << endl;
+	
+	h->insert(e0);
+	h->insert(e1);
+	h->insert(e2);
+	
+	for(auto iter = h->begin(); iter != h->end(); iter++) {
+		if (iter != 0) {
+			cout << iter->object()->prioridade << endl;
 		}
-		hist[NUMERO_ENTRADAS_HISTORICO-1] = t->getConsumo();
-		
 	}
 	
-	for (int i = 0; i < NUMERO_ENTRADAS_HISTORICO; i++) {
-		cout << hist[i] << endl;
-	}
+	float previsao = Previsor::preverConsumoTotal(h, 4, 90);
+	cout << previsao << endl;
+
 	
 	while (true);
 	
