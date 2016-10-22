@@ -533,17 +533,6 @@ class Previsor {
 			\return Valor previsto para o consumo da tomada.
 		*/
 		static float preverConsumoProprio(float historico[NUMERO_ENTRADAS_HISTORICO]) { //28 entradas corresponde a 7 dias(uma entrada a cada 6 horas)
-     		/*float previsao = 0.03* historico[0]+ 0.04* historico[1] + 0.06* historico[2] + 0.07* historico[3] 
-     						+ 0.09* historico[4] + 0.1* historico[5] + 0.11* historico[6] + 0.14* historico[7] 
-     						+ 0.16* historico[8] + 0.20* historico[9];*/
-     		/*float previsao = 0.* historico[0]   + 0.* historico[1]  + 0.* historico[2]  + 0.* historico[3] 
-            				+ 0.* historico[4]  + 0.* historico[5]  + 0.* historico[6]  + 0.* historico[7] 
-                        	+ 0.* historico[8]  + 0.* historico[9]  + 0.* historico[10] + 0.* historico[11] 
-                        	+ 0.* historico[10] + 0.* historico[13] + 0.* historico[14] + 0.* historico[15] 
-                        	+ 0.* historico[16] + 0.* historico[17] + 0.* historico[18] + 0.* historico[19] 
-                        	+ 0.* historico[20] + 0.* historico[21] + 0.* historico[22] + 0.* historico[23] 
-                        	+ 0.* historico[24] + 0.* historico[25] + 0.* historico[26] + 0.* historico[27];*/
-
             float previsao =   (1/406.0) * historico[0]
 							+  (2/406.0) * historico[1]
 							+  (3/406.0) * historico[2]
@@ -861,23 +850,59 @@ class Gerente {
 			\return valor booleano que indica se a tomada deve desligar.
 		*/
 		void mantemConsumoDentroDoLimite() { 
-			float consumoCalculado = 0, consumo, diferencaConsumo;
+			float consumoCalculado = 0, consumoMesmaPioridade = consumoProprioPrevisto, consumo, menorConsumoMesmaPrioridade = 0, diferencaConsumo;
+			bool outrasComMesmaPrioridade = false; // Indica se há outras tomadas com a mesma prioridade
 			for(auto iter = hash->begin(); iter != hash->end(); iter++) {
-				//se iter não é vazio: begin() retorna um objeto vazio no inicio por algum motivo
+				// Se iter não é vazio: begin() retorna um objeto vazio no inicio por algum motivo
 				if (iter != 0) {
-					if(prioridadeAtual() > iter->object()->prioridade) { //outras tomadas que têm prioridade abaixo da minha prioridade
+					if(prioridadeAtual() > iter->object()->prioridade) { // Outras tomadas que têm prioridade abaixo da minha prioridade
 						consumo = iter->object()->consumoPrevisto;
 						consumoCalculado += consumo * quantidade6Horas;
+					} else if (prioridadeAtual() == iter->object()->prioridade) { // Outras tomadas com a mesma prioridade
+						outrasComMesmaPrioridade = true;
+						consumoMesmaPioridade += iter->object()->consumoPrevisto;
+						if (consumoProprioPrevisto > iter->object()->consumoPrevisto) { // Tomadas cujo consumo é menor que o consumo desta tomada
+							menorConsumoMesmaPrioridade += iter->object()->consumoPrevisto;
+						}
 					}
 				}
 			}
-			
+			float consumoRestante = maximoConsumoMensal - consumoMensal;
 			diferencaConsumo = consumoTotalPrevisto - consumoCalculado;
-			if (diferencaConsumo <= (maximoConsumoMensal - consumoMensal)) {
+			if (diferencaConsumo <= consumoRestante) {
 				//liga a tomada
 				tomada->ligar();
-			} else {
-				//precisa desligar ou dimmerizar, verificar se há outras tomadas com a mesma prioridade
+			} else { // Tomada pode precisar se desligar ou dimmerizar(se possível)
+				if (outrasComMesmaPrioridade) {
+					// Se desligando as tomada de mesmo consumo completamente o consumo fica abaixo do necessário para o consumo máximo ser mantido
+					if ((diferencaConsumo - consumoMesmaPioridade) < consumoRestante) {
+						// Nesse caso, desligando apenas algumas tomadas de mesma prioridade que essa o consumo ainda pode ser mantido abaixo do limite
+						// Aqui, as tomadas com consumo menor são as escolhidas para desligamento
+						if ((diferencaConsumo - menorConsumoMesmaPrioridade)  <= consumoRestante) { // Se desligando as tomadas com mesma prioridade mas consumo menor é o suficiente para manter o limite de consumo
+							// Essa tomada pode ser ligada
+							tomada->ligar();
+							
+						} else { //Tomada é desligada ou dimmerizada
+							if ((diferencaConsumo - menorConsumoMesmaPrioridade - consumoProprioPrevisto)  <= consumoRestante && tomada->getTipo() == 2) {
+								// Se pode dimmerizar
+								//calcula porcentagem de dimmerização
+							} else {
+								tomada->desliga();
+							}
+						}
+						
+					} else {
+						tomada->desliga();
+					}
+					
+				} else { // Se não há outras tomadas com a mesma prioridade que essa		
+					 // Se desligando a tomada completamente o consumo fica abaixo do necessário para o consumo máximo ser mantido e a tomada tem dimmer
+					if ((diferencaConsumo - consumoProprioPrevisto) < consumoRestante && tomada->getTipo() == 2) {
+						//calcula porcentagem de dimmertização
+					} else { // Se não tem dimmer
+						tomada->desliga();
+					}
+				}	
 			}		
 		}
 	
