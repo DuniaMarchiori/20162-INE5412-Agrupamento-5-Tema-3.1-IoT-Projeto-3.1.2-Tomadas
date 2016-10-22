@@ -95,26 +95,28 @@ class Mensageiro {
 			\return Retorna a mensagem recebida.
 		*/
 		Dados* receberMensagem() {
-			Address remetente;
-			Protocol prot;
-			Dados* msg;
-			bool hasMsg = nic->receive(&remetente, &prot, msg, sizeof msg);
+			Address* remetente;
+			Protocol* prot;
+			Dados msg;
+			bool hasMsg = nic->receive(remetente, prot, &msg, sizeof msg);
 			
 			if (!hasMsg) { // Se não foi recebida nenhuma mensagem
-				msg->remetente = -1;
-				msg->consumoPrevisto = -1;
-				msg->ultimoConsumo = -1;
-				msg->prioridade = -1;
+				msg.remetente = -1;
+				msg.ligada = 0;
+				msg.consumoPrevisto = -1;
+				msg.ultimoConsumo = -1;
+				msg.prioridade = -1;
 			}
 			
-			return msg;
+			Dados* msgP = &msg;
+			return msgP;
 		}
 		
 		/*!
 			Método que retorna o endereço NIC do dispositivo.
 			\return Valor do tipo Address que representa o endereço do dispositivo.
 		*/
-		Address obterEnderecoNIC() {
+		const Address obterEnderecoNIC() {
 			return nic->address();
 		}
 };
@@ -197,7 +199,7 @@ class Relogio {
 			Método que incrementa os meses de forma a atualizar todas as unidades de tempo superiores.
 			\param meses Quantos meses serão incrementados no relogio.
 		*/
-		void incrementarMes(long long meses){
+		void incrementarMes(long long meses){		
 			data.mes+=meses;
 			if (data.mes > 12) {
 				incrementarAno( data.mes/12 );
@@ -273,10 +275,11 @@ class Relogio {
 			\return Valor inteiro que representa quantos dias tem no mês.
 		*/
 		int getDiasNoMes() {
-			if (data.ano % 4 == 0 && data.mes == 2) { //se é ano bissexto e o mês é fevereiro
+			Data d = getData();
+			if (d.ano % 4 == 0 && d.mes == 2) { //se é ano bissexto e o mês é fevereiro
 				return 29;
 			} else {
-				return diasNoMes[data.mes-1];
+				return diasNoMes[d.mes-1];
 			}
 		}
 };
@@ -541,13 +544,34 @@ class Previsor {
                         	+ 0.* historico[20] + 0.* historico[21] + 0.* historico[22] + 0.* historico[23] 
                         	+ 0.* historico[24] + 0.* historico[25] + 0.* historico[26] + 0.* historico[27];*/
 
-            float previsao = 0.015* historico[0]    + 0.017* historico[1]   + 0.018* historico[2]   + 0.02* historico[3] //7%
-                        	+ 0.02* historico[4]    + 0.025* historico[5]   + 0.027* historico[6]   + 0.028* historico[7] //10%
-                        	+ 0.028* historico[8]   + 0.029* historico[9]   + 0.03* historico[10]   + 0.033* historico[11] //12%
-                        	+ 0.033* historico[10]  + 0.034* historico[13]  + 0.035* historico[14]  + 0.038* historico[15] //14%
-                        	+ 0.045* historico[16]  + 0.045* historico[17]  + 0.045* historico[18]  + 0.045* historico[19] //18%
-                        	+ 0.0475* historico[20] + 0.0475* historico[21] + 0.0475* historico[22] + 0.0475* historico[23] //19%
-                        	+ 0.05* historico[24]   + 0.05* historico[25]   + 0.05* historico[26]   + 0.05* historico[27]; //20%
+            float previsao =   (1/406.0) * historico[0]
+							+  (2/406.0) * historico[1]
+							+  (3/406.0) * historico[2]
+							+  (4/406.0) * historico[3]   //3%
+							+  (5/406.0) * historico[4]
+							+  (6/406.0) * historico[5]
+							+  (7/406.0) * historico[6]
+							+  (8/406.0) * historico[7]   //8%
+							+  (9/406.0) * historico[8]
+							+ (10/406.0) * historico[9]
+							+ (11/406.0) * historico[10]
+							+ (12/406.0) * historico[11]  //12%
+							+ (13/406.0) * historico[10]
+							+ (14/406.0) * historico[13]
+							+ (15/406.0) * historico[14]
+							+ (16/406.0) * historico[15]  //14%
+							+ (17/406.0) * historico[16]
+							+ (18/406.0) * historico[17]
+							+ (19/406.0) * historico[18]
+							+ (20/406.0) * historico[19]  //18%
+							+ (21/406.0) * historico[20]
+							+ (22/406.0) * historico[21]
+							+ (23/406.0) * historico[22]
+							+ (24/406.0) * historico[23]  //19%
+							+ (25/406.0) * historico[24]
+							+ (26/406.0) * historico[25]
+							+ (27/406.0) * historico[26]
+							+ (28/406.0) * historico[27]; //26%
         	return previsao;
     	}
 
@@ -557,8 +581,7 @@ class Previsor {
 			\return Valor previsto para o consumo total das tomadas.
 		*/
 		static float preverConsumoTotal(Simple_Hash<Dados, sizeof(Dados), int>* h, int quartosDeDia, float minhaPrevisao) {
-			/*Cada previsão é para as próximas 6 horas. Assim, esse valor é multiplicado por quantas mais 6 horas faltam para acabar o mês 
-				para sabermos se o consumo está dentro do limite.*/
+			/*Cada previsão é para as próximas 6 horas. Assim, esse valor é multiplicado por quantas mais 6 horas faltam para acabar o mês para sabermos se o consumo está dentro do limite.*/
 
 			float total = minhaPrevisao * quartosDeDia, consumo;
 			for(auto iter = h->begin(); iter != h->end(); iter++) {
@@ -693,7 +716,7 @@ class Gerente {
 		void atualizaHistorico(float novo) {
 			if (tomada->estaLigada()) { 
 				int i;
-				for (i = 0; i < (NUMERO_ENTRADAS_HISTORICO - 2); ++i) {
+				for (i = 0; i < (NUMERO_ENTRADAS_HISTORICO - 1); i++) {
 					historico[i] = historico[i+1];
 				}
 				//consumo novo é adicionado no fim do vetor para manter coerência com a lógica da previsão de consumo
@@ -886,13 +909,43 @@ class Gerente {
 	Método inicial do programa.
 */
 int main() {
+	
 	Alarm::delay(2*1000000);
 	
-	TomadaMulti* t = new TomadaMulti();
+	cout << "Start" << endl << endl;
 	
+	TomadaInteligente* t = new TomadaInteligente();
+	t->ligar();
+	
+	float hist[NUMERO_ENTRADAS_HISTORICO];
+	for (int i = 0; i < NUMERO_ENTRADAS_HISTORICO; i++) {
+		hist[i] = 0;
+	}
+	
+	float previsao;
+	
+	unsigned long long j = 0;
 	while (true) {
+		j++;
+		previsao = Previsor::preverConsumoProprio(hist);
+		cout << "Iretacao " << j << endl;
+		cout << "Consumo previsto: " << previsao << endl;
+		cout << "Consumo efetivo: " << hist[NUMERO_ENTRADAS_HISTORICO-1] << endl;
+		cout << "Erro: " << (previsao - hist[NUMERO_ENTRADAS_HISTORICO-1]) << endl << endl;
+		Alarm::delay(1*1000000);
+		
+		for (int i = 0; i < (NUMERO_ENTRADAS_HISTORICO-1); i++) {
+			hist[i] = hist[i+1];
+		}
+		hist[NUMERO_ENTRADAS_HISTORICO-1] = t->getConsumo();
 		
 	}
+	
+	for (int i = 0; i < NUMERO_ENTRADAS_HISTORICO; i++) {
+		cout << hist[i] << endl;
+	}
+	
+	while (true);
 	
 	//t.setPrioridades
 	//Relogio r;
