@@ -370,7 +370,7 @@ class Tomada {
 	Classe que representa uma tomada com dimmer.
 */
 class TomadaComDimmer: virtual public Tomada {
-	private:
+	protected:
 		float dimPorcentagem; /*!< Váriavel float que indica a porcentagem de dimmerização da tomada.*/
 
 	public:
@@ -387,14 +387,6 @@ class TomadaComDimmer: virtual public Tomada {
 		*/
 		float getPorcentagem() {
 			return dimPorcentagem;
-		}
-
-		/*!
-			Método que dimmeriza a tomada de acordo com o porcentagem passada.
-			\param porcentagem é a porcentagem de dimmerização.
-		*/
-		void dimmerizar(float porcentagem) {
-			dimPorcentagem = porcentagem;
 		}
 };
 
@@ -519,6 +511,14 @@ class TomadaMulti: public TomadaComDimmer, public TomadaInteligente {
 		TomadaMulti() {
 			tipo = 2; // Indica uma TomadaInteligente com dimmer
 		}
+	
+		/*!
+			Método que calcula a porcentagem de dimmerização da tomada.
+			\param p é a porcentagem de dimmerização.
+		*/
+		void dimmerizar(float consumo, float sobra) {
+			dimPorcentagem = (sobra/consumo);
+		}
 };
 
 //----------------------------------------------------------------------------
@@ -574,16 +574,12 @@ class Previsor {
 			\param quartosDeDia é a quantidade de quartos de dia(6 horas) que faltam para o mês acabar.
 			\return Valor previsto para o consumo total das tomadas.
 		*/
-		static float preverConsumoTotal(Tabela* h, int quartosDeDia, float minhaPrevisao) {
-			/*Cada previsão é para as próximas 6 horas. Assim, esse valor é multiplicado por quantas mais 6 horas faltam para acabar o mês para sabermos se o consumo está dentro do limite.*/
-
-			float total = minhaPrevisao * quartosDeDia;
-			float consumo;
+		static float preverConsumoTotal(Tabela* h, float minhaPrevisao) {
+			float total = minhaPrevisao;
 			for(auto iter = h->begin(); iter != h->end(); iter++) {
 				//se iter não é vazio: begin() retorna um objeto vazio no inicio por algum motivo
 				if (iter != 0) {
-					consumo = iter->object()->consumoPrevisto;
-					total += consumo * quartosDeDia;
+					total += iter->object()->consumoPrevisto;
 				}
 			}
 			return total;
@@ -790,14 +786,16 @@ class Gerente {
 			\sa Previsor
 		*/
 		void fazerPrevisaoConsumoProprio() {
-			consumoProprioPrevisto = Previsor::preverConsumoProprio(historico);
+			/*Cada previsão é para as próximas 6 horas. Assim, esse valor é multiplicado por quantas mais 6 horas faltam para acabar o mês para depois sabermos se o consumo está dentro do limite.*/
+			float retorno = Previsor::preverConsumoProprio(historico);
+			consumoProprioPrevisto = retorno * quantidade6Horas;
 		}
 
 		/*!
 			Método que atualiza o valor da previsão do consumo total das to até o fim do mês. O valor é armazenado na variável global consumoTotalPrevisto. 
 		*/
 		void fazerPrevisaoConsumoTotal() {
-			consumoTotalPrevisto = Previsor::preverConsumoTotal(hash, quantidade6Horas, consumoProprioPrevisto);
+			consumoTotalPrevisto = Previsor::preverConsumoTotal(hash, consumoProprioPrevisto);
 		}
 
 		/*!
@@ -856,14 +854,14 @@ class Gerente {
 			\return valor booleano que indica se a tomada deve desligar.
 		*/
 		void mantemConsumoDentroDoLimite() { 
-			float consumoCalculado = 0, consumoMesmaPioridade = consumoProprioPrevisto, consumo, menorConsumoMesmaPrioridade = 0, diferencaConsumo;
+			float diferencaConsumo, consumoCalculado = 0, consumoMesmaPioridade = consumoProprioPrevisto, menorConsumoMesmaPrioridade = 0;
 			bool outrasComMesmaPrioridade = false; // Indica se há outras tomadas com a mesma prioridade
+			
 			for(auto iter = hash->begin(); iter != hash->end(); iter++) {
 				// Se iter não é vazio: begin() retorna um objeto vazio no inicio por algum motivo
 				if (iter != 0) {
 					if(prioridadeAtual() > iter->object()->prioridade) { // Outras tomadas que têm prioridade abaixo da minha prioridade
-						consumo = iter->object()->consumoPrevisto;
-						consumoCalculado += consumo * quantidade6Horas;
+						consumoCalculado += iter->object()->consumoPrevisto;
 					} else if (prioridadeAtual() == iter->object()->prioridade) { // Outras tomadas com a mesma prioridade
 						outrasComMesmaPrioridade = true;
 						consumoMesmaPioridade += iter->object()->consumoPrevisto;
@@ -873,7 +871,8 @@ class Gerente {
 					}
 				}
 			}
-			float consumoRestante = maximoConsumoMensal - consumoMensal;
+			
+			float consumoRestante = maximoConsumoMensal - consumoMensal, sobraDeConsumo = 0;
 			diferencaConsumo = consumoTotalPrevisto - consumoCalculado;
 			if (diferencaConsumo <= consumoRestante) {
 				//liga a tomada
@@ -891,7 +890,8 @@ class Gerente {
 						} else { //Tomada é desligada ou dimmerizada
 							if ((diferencaConsumo - menorConsumoMesmaPrioridade - consumoProprioPrevisto)  <= consumoRestante && tomada->getTipo() == 2) {
 								// Se pode dimmerizar
-								//calcula porcentagem de dimmerização
+								sobraDeConsumo = consumoRestante - (diferencaConsumo - menorConsumoMesmaPrioridade - consumoProprioPrevisto);
+								static_cast<TomadaMulti*>(tomada)->dimmerizar(consumoProprioPrevisto, sobraDeConsumo);
 							} else {
 								tomada->desligar();
 							}
@@ -904,7 +904,8 @@ class Gerente {
 				} else { // Se não há outras tomadas com a mesma prioridade que essa		
 					 // Se desligando a tomada completamente o consumo fica abaixo do necessário para o consumo máximo ser mantido e a tomada tem dimmer
 					if ((diferencaConsumo - consumoProprioPrevisto) < consumoRestante && tomada->getTipo() == 2) {
-						//calcula porcentagem de dimmertização
+						sobraDeConsumo = consumoRestante - (diferencaConsumo - consumoProprioPrevisto);
+						static_cast<TomadaMulti*>(tomada)->dimmerizar(consumoProprioPrevisto, sobraDeConsumo);
 					} else { // Se não tem dimmer
 						tomada->desligar();
 					}
@@ -988,8 +989,8 @@ int main() {
 		}
 	}
 	
-	float previsao = Previsor::preverConsumoTotal(h, 4, 90);
-	cout << previsao << endl;
+	//float previsao = Previsor::preverConsumoTotal(h, 4, 90); a chamada do método foi mudada
+	//cout << previsao << endl;
 
 	
 	while (true);
