@@ -8,7 +8,7 @@
 #include <chronometer.h>
 
 
-#define INTERVALO_ENVIO_MENSAGENS 0.1 /*!< Intervalo(em minutos) em que são feitos envio e recebimento de mensagens entre as tomadas. */
+#define INTERVALO_ENVIO_MENSAGENS 5 /*!< Intervalo(em minutos) em que são feitos envio e recebimento de mensagens entre as tomadas. */
 #define NUMERO_ENTRADAS_HISTORICO 28 /*!< Quantidade de entradas no histórico. Cada entrada corresponde ao consumo a cada 6 horas. */
 
 using namespace EPOS;
