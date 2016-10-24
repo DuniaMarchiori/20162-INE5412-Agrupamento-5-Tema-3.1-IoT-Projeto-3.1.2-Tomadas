@@ -606,7 +606,7 @@ class Gerente {
 		float consumoMensal; /*!< Variável que indica o consumo mensal das tomadas até o momento.*/
 		float consumoProprioPrevisto; /*!< Variável que indica o consumo previsto da tomada no mês.*/
 		float consumoTotalPrevisto; /*!< Variável que indica o consumo total previsto no mês.*/
-		float *historico; /*!< Vetor que guarda o consumo da tomada a cada 6 horas.*/
+		float historico[NUMERO_ENTRADAS_HISTORICO]; /*!< Vetor que guarda o consumo da tomada a cada 6 horas.*/
 		int quantidade6Horas; /*!< Variável que indica a quantidade de quartos de dia(6 horas) que faltam para o fim do mês.*/
 
 
