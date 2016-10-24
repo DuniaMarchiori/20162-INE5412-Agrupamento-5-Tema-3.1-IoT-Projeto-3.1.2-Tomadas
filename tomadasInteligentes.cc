@@ -335,8 +335,8 @@ class Tomada {
 			Método construtor da classe
 		*/
 		Tomada() {
-			ligada = false;
 			led  = new Led();
+			ligar();
 		}
 
 		/*!
