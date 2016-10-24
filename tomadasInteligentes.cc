@@ -518,7 +518,7 @@ class TomadaMulti: public TomadaComDimmer, public TomadaInteligente {
 			\param consumo é o consumo previsto da tomada até o fim do mês.
 			\param sobra é o máximo de consumo que a tomada pode ter para o limite máximo de consumo ser mantido.
 		*/
-		void dimmerizar(float consumo, float sobra) {
+		void dimerizar(float consumo, float sobra) {
 			dimPorcentagem = (sobra/consumo);
 		}
 };
@@ -677,7 +677,7 @@ class Gerente {
 
 			Chronometer* cronSinc = new Chronometer();
 
-			long long tempoDeSinc = INTERVALO_ENVIO_MENSAGENS*60*1000000; // Minutos pra Microssegundos.
+			long long tempoDeSinc = INTERVALO_ENVIO_MENSAGENS*60*1000000; // Minutos pra Microssegundos
 			long long nextSend = 0;
 			cronSinc->reset();
 			cronSinc->start();
@@ -689,7 +689,7 @@ class Gerente {
 					nextSend += 30000000; // 30 segundos.
 				} else {
 					dadosRecebidos = receberMensagem();
-					elemento = new Hash_Element(dadosRecebidos,dadosRecebidos->remetente); // Hash é indexada pelo endereço da tomada.
+					elemento = new Hash_Element(dadosRecebidos,dadosRecebidos->remetente); // Hash é indexada pelo endereço da tomada
 					atualizaHash(elemento);
 				}
 				//Alarm::delay(100000);
@@ -703,9 +703,9 @@ class Gerente {
 			\sa mantemConsumoDentroDoLimite()
 		*/
 		void administrarConsumo() {
-			// Se o consumo até agora somado à previsão de consumo até o fim do mês ficam acima do consumo máximo.
+			// Se o consumo até agora somado à previsão de consumo até o fim do mês ficam acima do consumo máximo
 			if (consumoMensal + consumoTotalPrevisto > maximoConsumoMensal) {
-				mantemConsumoDentroDoLimite(); // Desliga as tomadas necessárias para manter o consumo dentro do limite.
+				mantemConsumoDentroDoLimite(); // Desliga as tomadas necessárias para manter o consumo dentro do limite
 			} else { // Se o consumo está dentro do limite
 				// Liga todas as tomadas
 				tomada->ligar();
@@ -903,30 +903,30 @@ class Gerente {
 			Método que verifica se a tomada deve desligar para manter o consumo mensal dentro do consumo máximo.
 		*/
 		void mantemConsumoDentroDoLimite() {
-			// Representa o quanto de consumo ainda resta até atingir o limite do mês.
+			// Representa o quanto de consumo ainda resta até atingir o limite do mês
 			float consumoRestante = maximoConsumoMensal - consumoMensal;
 
 			float sobraDeConsumo = 0;
 			float diferencaConsumo;
 
-			// É o consumo total de todas as tomadas de menor prioridade que esta.
+			// É o consumo total de todas as tomadas de menor prioridade que esta
 			float consumoInferiores = 0;
-			// É o consumo total de todas as tomadas de mesma prioridade.
+			// É o consumo total de todas as tomadas de mesma prioridade
 			float consumoMesmaPioridade = consumoProprioPrevisto;
-			// É o consumo total de todas as tomadas de mesma prioridade e de consumo inferior.
+			// É o consumo total de todas as tomadas de mesma prioridade e de consumo inferior
 			float menorConsumoMesmaPrioridade = 0;
-			// Indica se há outras tomadas com a mesma prioridade.
+			// Indica se há outras tomadas com a mesma prioridade
 			bool outrasComMesmaPrioridade = false;
 
 			for(auto iter = hash->begin(); iter != hash->end(); iter++) {
 				// Se iter não é vazio: begin() retorna um objeto vazio no inicio por algum motivo
 				if (iter != 0) {
-					if(prioridadeAtual() > iter->object()->prioridade) { // Outras tomadas que têm prioridade abaixo da minha prioridade.
+					if(prioridadeAtual() > iter->object()->prioridade) { // Outras tomadas que têm prioridade abaixo da minha prioridade
 						consumoInferiores += iter->object()->consumoPrevisto;
 					} else if (prioridadeAtual() == iter->object()->prioridade) { // Outras tomadas com a mesma prioridade.
 						outrasComMesmaPrioridade = true;
 						consumoMesmaPioridade += iter->object()->consumoPrevisto;
-						if (consumoProprioPrevisto > iter->object()->consumoPrevisto) { // Tomadas cujo consumo é menor.
+						if (consumoProprioPrevisto > iter->object()->consumoPrevisto) { // Tomadas cujo consumo é menor
 							menorConsumoMesmaPrioridade += iter->object()->consumoPrevisto;
 						}
 					}
@@ -935,7 +935,7 @@ class Gerente {
 
 
 			diferencaConsumo = consumoTotalPrevisto - consumoInferiores;
-			if (diferencaConsumo <= consumoRestante) { // Se desligando as tomadas com prioridade inferior o consumo já fica dentro do limite.
+			if (diferencaConsumo <= consumoRestante) { // Se desligando as tomadas com prioridade inferior o consumo já fica dentro do limite
 				// Liga a tomada
 				tomada->ligar();
 			} else { // Se mesmo desligando as tomadas com prioridade inferior o consumo ainda está abaixo do limite
@@ -950,22 +950,22 @@ class Gerente {
 
 						} else { //Tomada é desligada ou dimmerizada
 							if ((diferencaConsumo - menorConsumoMesmaPrioridade - consumoProprioPrevisto)  <= consumoRestante && tomada->getTipo() == 2) {
-								// Se pode dimmerizar
+								// Se pode dimerizar
 								sobraDeConsumo = consumoRestante - (diferencaConsumo - menorConsumoMesmaPrioridade - consumoProprioPrevisto);
-								static_cast<TomadaMulti*>(tomada)->dimmerizar(consumoProprioPrevisto, sobraDeConsumo);
+								static_cast<TomadaMulti*>(tomada)->dimerizar(consumoProprioPrevisto, sobraDeConsumo);
 							} else {
 								tomada->desligar();
 							}
 						}
 
-					} else { // Se mesmo desligando todas as tomadas de mesma prioridade o consumo ainda estiver acima do limite, não há o que fazer, apenas desligar.
+					} else { // Se mesmo desligando todas as tomadas de mesma prioridade o consumo ainda estiver acima do limite, não há o que fazer, apenas desligar
 						tomada->desligar();
 					}
-				} else { // Se não há outras tomadas com a mesma prioridade.
+				} else { // Se não há outras tomadas com a mesma prioridade
 					 // Se desligando a tomada completamente o consumo fica abaixo do necessário para o consumo máximo ser mantido e a tomada tem dimmer
 					if ((diferencaConsumo - consumoProprioPrevisto) < consumoRestante && tomada->getTipo() == 2) {
 						sobraDeConsumo = consumoRestante - (diferencaConsumo - consumoProprioPrevisto);
-						static_cast<TomadaMulti*>(tomada)->dimmerizar(consumoProprioPrevisto, sobraDeConsumo);
+						static_cast<TomadaMulti*>(tomada)->dimerizar(consumoProprioPrevisto, sobraDeConsumo);
 					} else { // Se não tem dimmer
 						tomada->desligar();
 					}
@@ -978,10 +978,10 @@ class Gerente {
 			\sa diasRestantes()
 		*/
 		void calculaQuantidadeQuartosDeDia() {
-			// +1 para contar o dia de hoje e podermos subtrair os quartos que já passaram.
+			// +1 para contar o dia de hoje e podermos subtrair os quartos que já passaram
 			quantidade6Horas = (diasRestantes()+1) * 4;
 			int hora = relogio->getData().hora;
-			// Ajusta da quantidade para quando a tomada é criada depois do primeiro 1/4 do dia.
+			// Ajusta da quantidade para quando a tomada é criada depois do primeiro 1/4 do dia
 			int quartoDoDia = (int) hora / 6;
 			quantidade6Horas = quantidade6Horas - quartoDoDia;
 		}
