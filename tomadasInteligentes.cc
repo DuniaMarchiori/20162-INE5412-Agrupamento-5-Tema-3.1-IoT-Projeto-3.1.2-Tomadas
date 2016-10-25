@@ -785,7 +785,9 @@ class Gerente {
 			Método que calcula quanta energia já foi consumida no mês e atualiza a variável global consumoMensal.
 		*/
 		void atualizaConsumoMensal() {
-			consumoMensal += historico[NUMERO_ENTRADAS_HISTORICO - 1];
+			if (tomada->estaLigada()) {
+				consumoMensal += historico[NUMERO_ENTRADAS_HISTORICO - 1];
+			}
 			for(auto iter = hash->begin(); iter != hash->end(); iter++) {
 				// Se iter não é vazio: begin() retorna um objeto vazio no inicio por algum motivo
 				if (iter != 0) {
