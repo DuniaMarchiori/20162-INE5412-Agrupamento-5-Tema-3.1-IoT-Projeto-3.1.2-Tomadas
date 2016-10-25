@@ -104,8 +104,8 @@ class Mensageiro {
 
 			bool hasMsg = nic->receive(remetente, prot, msg, sizeof *msg);
 
-			if (!hasMsg || msg->remetente == (Address) -1) { // Se não foi recebida nenhuma mensagem ou foi recebida uma mensagem inválida.
-				//msg->remetente = (Address) -1;
+			if (!hasMsg) { // Se não foi recebida nenhuma mensagem
+				//msg->remetente = -1;
 				//msg->ligada = false;
 				msg->consumoPrevisto = -1;
 				msg->ultimoConsumo = -1;
