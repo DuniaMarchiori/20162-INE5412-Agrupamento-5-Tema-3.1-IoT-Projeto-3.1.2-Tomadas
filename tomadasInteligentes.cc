@@ -617,8 +617,7 @@ class Previsor {
 	Classe que faz o controle das tomadas inteligentes com EPOSMoteIII.
 */
 class Gerente {
-	//private: // FAZER VOLTAR A SER PRIVATE!
-	public:
+	private:
 		TomadaInteligente* tomada; /*!< Variável que indica a tomada que o gerente controla.*/
 		Relogio* relogio; /*!< Objeto que possui informações como data e hora.*/
 		Mensageiro* mensageiro;	/*!< Objeto que provê a comunicação da placa com as outras.*/
