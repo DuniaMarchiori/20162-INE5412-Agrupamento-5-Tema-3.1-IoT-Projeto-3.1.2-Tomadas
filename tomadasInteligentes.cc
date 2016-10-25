@@ -750,7 +750,8 @@ class Gerente {
 					static_cast<TomadaMulti*>(tomada)->setDimerizacao(1);
 				} else {
 					tomada->ligar();
-				}			}
+				}
+			}
 		}
 
 		/*!
