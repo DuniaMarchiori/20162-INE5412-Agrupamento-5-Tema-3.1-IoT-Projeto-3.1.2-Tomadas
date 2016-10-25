@@ -23,22 +23,22 @@ typedef NIC::Protocol Protocol;
 	Struct contendo as prioridades da tomada ao longo do dia.
 */
 struct Prioridades {
-    int madrugada; /*!< Corresponde à prioridade da tomada no horário das 00:00 (incluso) às 06:00 (não incluso). */
-    int manha; /*!< Corresponde à prioridade da tomada no horário das 06:00 (incluso) às 12:00 (não incluso). */
-    int tarde; /*!< Corresponde à prioridade da tomada no horário das 12:00 (incluso) às 18:00 (não incluso). */
-    int noite; /*!< Corresponde à prioridade da tomada no horário das 18:00 (incluso) às 00:00 (não incluso). */
+    int madrugada; /*!< Corresponde à prioridade da tomada no horario das 00:00 (incluso) às 06:00 (não incluso). */
+    int manha; /*!< Corresponde à prioridade da tomada no horario das 06:00 (incluso) às 12:00 (não incluso). */
+    int tarde; /*!< Corresponde à prioridade da tomada no horario das 12:00 (incluso) às 18:00 (não incluso). */
+    int noite; /*!< Corresponde à prioridade da tomada no horario das 18:00 (incluso) às 00:00 (não incluso). */
 };
 
 //!  Struct Dados
 /*!
-	Agrupamento dos dados que serão transmitidos e recebidos pelo EPOSMote3.
+	Agrupamento dos dados que serão transmitidos e recebidos pela placa.
 */
 struct Dados {
     Address remetente; /*!< Endereço da tomada remetente da mensagem. */
-    //bool ligada; /*!< Indica se a tomada remetente está ligada. */
-    float consumoPrevisto; /*!< Corresponde ao consumo previsto da tomada até o fim do mês. */
+    bool ligada; /*!< Indica se a tomada remetente está ligada. */
+    float consumoPrevisto; /*!< Corresponde ao consumo previsto da tomada. */
 	float ultimoConsumo; /*!< Corresponde ao valor do consumo da tomada nas últimas 6 horas. */
-    int prioridade; /*!< Corresponde à prioridade da tomada no período de envio da mensagem. */
+    int prioridade; /*!< Corresponde à prioridade da tomada. */
 };
 
 //!  Struct Data
@@ -89,7 +89,7 @@ class Mensageiro {
 			\param msg é a mensagem que será enviada.
 		*/
 		void enviarMensagem(const Address destino, const Dados msg) {
-			const Protocol prot = 1; // Porque o protocol é 1?
+			const Protocol prot = NIC::PTP;
 			nic->send(destino, prot, &msg, sizeof msg);
 		}
 
@@ -101,14 +101,17 @@ class Mensageiro {
 			Address* remetente;
 			Protocol* prot;
 			Dados* msg = new Dados();
+
 			bool hasMsg = nic->receive(remetente, prot, msg, sizeof *msg);
 
-			if (!hasMsg) { // Se não foi recebida nenhuma mensagem
-				msg->remetente = (Address) -1;
-				//msg->ligada = false;
+			if (!hasMsg || msg->remetente == (Address) -1) { // Se não foi recebida nenhuma mensagem ou foi recebida uma mensagem inválida.
+				//msg->remetente = (Address) -1;
+				msg->ligada = false;
 				msg->consumoPrevisto = -1;
 				msg->ultimoConsumo = -1;
 				msg->prioridade = -1;
+			} else {
+				cout << "   Mensagem Recebida de " << msg->remetente << endl;
 			}
 
 			return msg;
@@ -126,13 +129,13 @@ class Mensageiro {
 //----------------------------------------------------------------------------
 //!  Classe Relogio
 /*!
-	Classe que lida com as informações de datas e horários.
+	Classe que lida com as informações de datas e horarios.
 */
 class Relogio {
 	private:
-		Data data; /*!< É uma struct Data para o controle da data atual.*/
+		Data data;
 		int diasNoMes[12]; /*!< Vetor que guarda quantos dias tem em cada mês.*/
-		Chronometer* cronometro; /*!< Objeto da classe Chronometer que representa um cronômetro.*/
+		Chronometer* cronometro;
 
 		/*!
 			Método que inicializa o vetor com a quantidade de dias em cada mẽs.
@@ -179,8 +182,8 @@ class Relogio {
 			return data;
 		}
 
-		/*!
-			Método que atualiza os dados do relógio, baseado no tempo desde a última requisição.
+		/*!a
+			Método que atualiza os dados do relogio, baseado no tempo desde a ultima requisicao.
 		*/
 		void atualizaRelogio() {
 			long long tempoDecorrido = cronometro->read();
@@ -191,7 +194,7 @@ class Relogio {
 
 		/*!
 			Método que incrementa o ano.
-			\param anos é a quantidade de anos que serão incrementados no relógio.
+			\param anos Quantos anos serão incrementados no relogio.
 		*/
 		void incrementarAno(long long anos){
 			data.ano+=anos;
@@ -199,7 +202,7 @@ class Relogio {
 
 		/*!
 			Método que incrementa os meses de forma a atualizar todas as unidades de tempo superiores.
-			\param meses é a quantidade de meses que serão incrementados no relógio.
+			\param meses Quantos meses serão incrementados no relogio.
 		*/
 		void incrementarMes(long long meses){
 			data.mes+=meses;
@@ -211,7 +214,7 @@ class Relogio {
 
 		/*!
 			Método que incrementa os dias de forma a atualizar todas as unidades de tempo superiores.
-			\param dias é a quantidade de dias que serão incrementados no relógio.
+			\param dias Quantos dias serão incrementados no relogio.
 		*/
 		void incrementarDia(long long dias){
 			while (dias > 0) {
@@ -226,7 +229,7 @@ class Relogio {
 
 		/*!
 			Método que incrementa as horas de forma a atualizar todas as unidades de tempo superiores.
-			\param hrs é a quantidade de horas que serão incrementadas no relógio.
+			\param hrs Quantas horas serão incrementados no relogio.
 		*/
 		void incrementarHora(long long hrs){
 			data.hora+=hrs;
@@ -238,7 +241,7 @@ class Relogio {
 
 		/*!
 			Método que incrementa os minutos de forma a atualizar todas as unidades de tempo superiores.
-			\param mins é a quantidade de minutos que serão incrementados no relógio.
+			\param mins Quantos minutos serão incrementados no relogio.
 		*/
 		void incrementarMinuto(long long mins){
 			data.minuto+=mins;
@@ -250,7 +253,7 @@ class Relogio {
 
 		/*!
 			Método que incrementa os segundos de forma a atualizar todas as unidades de tempo superiores.
-			\param secs é a quantidade de segundos que serão incrementados no relógio.
+			\param secs Quantos segundos serão incrementados no relogio.
 		*/
 		void incrementarSegundo(long long secs){
 			data.segundo+=secs;
@@ -262,7 +265,7 @@ class Relogio {
 
 		/*!
 			Método que incrementa os microssegundos de forma a atualizar todas as unidades de tempo superiores.
-			\param mcsec é a quantidade de microssegundos que serão incrementados no relógio.
+			\param mcsec Quantos microssegundos serão incrementados no relogio.
 		*/
 		void incrementarMicrossegundo(long long mcsec){
 			data.microssegundos+=mcsec;
@@ -273,9 +276,7 @@ class Relogio {
 		}
 
 		/*!
-			Método que retorna quantos dias tem no mês atual.
-			\param mes é um inteiro que indica o mês atual.
-			\param ano é um inteiro que indica o ano atual.
+			Método que retorna quantos dias tem no mes atual.
 			\return Valor inteiro que representa quantos dias tem no mês.
 		*/
 		int getDiasNoMes(int mes, int ano) {
@@ -317,6 +318,7 @@ class Led {
     	void desligarLED() {
     		led->set(false);
     	}
+
 };
 
 //----------------------------------------------------------------------------
@@ -335,8 +337,8 @@ class Tomada {
 			Método construtor da classe
 		*/
 		Tomada() {
+			ligada = false;
 			led  = new Led();
-			ligar();
 		}
 
 		/*!
@@ -382,7 +384,7 @@ class TomadaComDimmer: virtual public Tomada {
 		}
 
 		/*!
-			Método que retorna a porcentagem de dimmerização da tomada.
+			Método que retorna a a porcentagem de dimmerização da tomada.
 			\return Valor float que indica a porcentagem de dimmerização da tomada.
 		*/
 		float getPorcentagem() {
@@ -394,11 +396,10 @@ class TomadaComDimmer: virtual public Tomada {
 //!  Classe TomadaInteligente
 /*!
 	Classe que representa uma tomada controlada pelo EPOSMoteIII.
-	Herda da classe Tomada.
 */
 class TomadaInteligente: virtual public Tomada {
 	protected:
-		int tipo; /*!< Variável que indica o tipo da tomada. Tipo 1 indica uma TomadaInteligente*/
+		int tipo; /*!< Variável que indica o tipo da tomada.*/
 	private:
 		Prioridades prioridades; /*!< Variável que contém as prioridade da tomada ao longo do dia.*/
 		float consumo; /*!< Variável que indica o consumo da tomada.*/
@@ -433,32 +434,32 @@ class TomadaInteligente: virtual public Tomada {
 		}
 
 		/*!
-			Método que altera a prioridade no período das 00:00 às 06:00.
-			\param p é o novo valor da prioridade nesse horário.
+			Método que altera a prioridade no periodo das 00:00 às 06:00.
+			\param p é o novo valor da prioridade nesse horario.
 		*/
 		void setPrioridadeMadrugada(int p) {
 			prioridades.madrugada = p;
 		}
 
 		/*!
-			Método que altera a prioridade no período das 06:00 às 12:00.
-			\param p é o novo valor da prioridade nesse horário.
+			Método que altera a prioridade no periodo das 06:00 às 12:00.
+			\param p é o novo valor da prioridade nesse horario.
 		*/
 		void setPrioridadeManha(int p) {
 			prioridades.manha = p;
 		}
 
 		/*!
-			Método que altera a prioridade no período das 12:00 às 18:00.
-			\param p é o novo valor da prioridade nesse horário.
+			Método que altera a prioridade no periodo das 12:00 às 18:00.
+			\param p é o novo valor da prioridade nesse horario.
 		*/
 		void setPrioridadeTarde(int p) {
 			prioridades.tarde = p;
 		}
 
 		/*!
-			Método que altera a prioridade no período das 18:00 às 00:00.
-			\param p é o novo valor da prioridade nesse horário.
+			Método que altera a prioridade no periodo das 18:00 às 00:00.
+			\param p é o novo valor da prioridade nesse horario.
 		*/
 		void setPrioridadeNoite(int p) {
 			prioridades.noite = p;
@@ -478,8 +479,8 @@ class TomadaInteligente: virtual public Tomada {
 		*/
 		float getConsumo() {
 
-			// Método criado para possibilitar a simulação da análise de consumo de uma tomada a cada 6 horas.
-			// Em um sistema real este método retornaria o consumo da tomada.
+			// Metodo criado para simular a analise de consumo de uma tomada a cada 6 horas.
+			// Em um sistema real este metodo retornaria o consumo da tomada.
 
 			if (ligada) {
 				unsigned int rand;
@@ -487,7 +488,7 @@ class TomadaInteligente: virtual public Tomada {
 					rand = Random::random();
 					consumo = 200 + (rand % (500-200+1));
 				}
-				// Aplica uma variação ao último consumo registrado, para simular um sistema real onde os valores são de certa forma consistentes.
+				// Aplica uma variacao ao ultimo consumo registrado, para simular um sistema real onde os valores são de certa forma consistentes.
 				rand = Random::random();
 				float variacao = (90 + (rand % 21)) / 100.0f; // Valor de 0.9 até 1.1 ou 90% até 110%
 
@@ -497,6 +498,7 @@ class TomadaInteligente: virtual public Tomada {
 			}
 			return consumo;
 		}
+
 };
 
 //----------------------------------------------------------------------------
@@ -514,11 +516,10 @@ class TomadaMulti: public TomadaComDimmer, public TomadaInteligente {
 		}
 
 		/*!
-			Método que calcula a porcentagem de dimmerização da tomada. Essa porcentagem é armazenada na variável dimPorcentagem.
-			\param consumo é o consumo previsto da tomada até o fim do mês.
-			\param sobra é o máximo de consumo que a tomada pode ter para o limite máximo de consumo ser mantido.
+			Método que calcula a porcentagem de dimmerização da tomada.
+			\param p é a porcentagem de dimmerização.
 		*/
-		void dimerizar(float consumo, float sobra) {
+		void dimmerizar(float consumo, float sobra) {
 			dimPorcentagem = (sobra/consumo);
 		}
 };
@@ -536,8 +537,7 @@ class Previsor {
 		//Previsor();
 
 		/*!
-			Método estático que estima o consumo da tomada para as pŕoximas 6 horas.
-			\param historico é um vetor que contém os consumos da tomada.
+			Método que estima o consumo da tomada para as pŕoximas 6 horas.
 			\return Valor previsto para o consumo da tomada.
 		*/
 		static float preverConsumoProprio(float historico[NUMERO_ENTRADAS_HISTORICO]) { //28 entradas corresponde a 7 dias(uma entrada a cada 6 horas)
@@ -574,8 +574,7 @@ class Previsor {
 
 		/*!
 			Método que estima o consumo de todas as tomadas juntas até o fim do mês.
-			\param h é uma hash que contém os valores enviados pelas outras tomadas.
-			\param minhaPrevisao é a previsão da tomada até o fim do mês.
+			\param quartosDeDia é a quantidade de quartos de dia(6 horas) que faltam para o mês acabar.
 			\return Valor previsto para o consumo total das tomadas.
 		*/
 		static float preverConsumoTotal(Tabela* h, float minhaPrevisao) {
@@ -588,6 +587,7 @@ class Previsor {
 			}
 			return total;
 		}
+
 };
 
 //----------------------------------------------------------------------------
@@ -606,62 +606,72 @@ class Gerente {
 		float consumoMensal; /*!< Variável que indica o consumo mensal das tomadas até o momento.*/
 		float consumoProprioPrevisto; /*!< Variável que indica o consumo previsto da tomada no mês.*/
 		float consumoTotalPrevisto; /*!< Variável que indica o consumo total previsto no mês.*/
-		float historico[NUMERO_ENTRADAS_HISTORICO]; /*!< Vetor que guarda o consumo da tomada a cada 6 horas.*/
+		float *historico; /*!< Vetor que guarda o consumo da tomada a cada 6 horas.*/
 		int quantidade6Horas; /*!< Variável que indica a quantidade de quartos de dia(6 horas) que faltam para o fim do mês.*/
 
 
 		/*!
 			Método que realiza o trabalho da placa, fazendo sua previsão, sincronização e ajustes no estado da tomada conforme o necessário.
-			\sa calculaQuantidadeQuartosDeDia(), atualizaHistorico(), fazerPrevisaoConsumoProprio(), preparaEnvio(), sincronizar(), 
-				atualizaConsumoMensal(), fazerPrevisaoConsumoTotal(), administrarConsumo()
 		*/
 		void administrar() {
 
-			// Entrando em um novo mês
+			// Entrando em um novo mes
 			if (quantidade6Horas == 0) {
 				consumoMensal = 0;
 				calculaQuantidadeQuartosDeDia();
 			}
 
-			cout << "Prevendo" << endl;
-			// Preparando a previsao própria.
-			atualizaHistorico(tomada->getConsumo());
+			cout << "- Previsao." << endl;
+			// Preparando a previsao propria.
+			float ultimoConsumo = tomada->getConsumo();
+			cout << "  Consumo efetivo das ultimas 6h: " << ultimoConsumo << endl;
+			atualizaHistorico(ultimoConsumo);
 			fazerPrevisaoConsumoProprio();
+			cout << "  Previsao propria ate o fim do mes: " << consumoProprioPrevisto << endl;
 
-			cout << "Prepadando dados" << endl;
+			cout << "- Prepadando dados para enviar." << endl;
 			// Preparando Dados para enviar.
 			Dados dadosEnviar;
 			dadosEnviar = preparaEnvio();
 
-			cout << "Entrando em Sincronizacao" << endl;
+			cout << "- Entrando em sincronizacao." << endl;
 			// Sincronização entre as placas.
 			sincronizar(dadosEnviar);
+			cout << "  Placas sincronizadas." << endl;
 
-			//DELETAR
+			cout << "- Dados obtidos:" << endl;
 			printHash();
 
-			// Atualiza as previsões com base nos novos dados recebidos.
+			cout << "- Tomada de decisao:" << endl;
+			// Atualiza as previsão baseado nos novos dados recebidos.
 			atualizaConsumoMensal();
 			fazerPrevisaoConsumoTotal(); // Considera todas as tomadas, mesmo as desligadas.
+			cout << "  Consumo maximo permitido ate o final do mes: .. " << maximoConsumoMensal << endl;
+			cout << "  Consumo total do sistema ate o fim do mes: .... " << consumoTotalPrevisto << endl;
+			cout << "  Prioridade atual: ............................. " << dadosEnviar.prioridade << endl;
 
-			// Toma decisões dependendo de como está o consumo do sistema.
+			// Toma decisões dependendo de como esta o consumo do sistema.
 			administrarConsumo();
 
-			// Atualiza a variável de controle que indica quantas verificações ainda serão feitas dentro desse mês.
+			// Atualiza a variavel de controle que indica quantas verificações ainda serão feitas dentro desse mês.
 			quantidade6Horas--;
 		}
 
 		/*!
 			Método que prepara os dados a serem enviados para as outras tomadas.
-			\return Dados a serem enviados com os valores atuais da tomada.
-			\sa prioridadeAtual()
+			\return Ponteiro para os Dados a serem enviados, com seus valores ajeitados.
 		*/
 		Dados preparaEnvio() {
 			Dados dados;
 			dados.remetente = mensageiro->obterEnderecoNIC();
-			//dados.ligada = tomada->estaLigada();
+			dados.ligada = tomada->estaLigada();
 			dados.consumoPrevisto = consumoProprioPrevisto;
-			dados.ultimoConsumo = historico[NUMERO_ENTRADAS_HISTORICO - 1];
+			if (tomada->estaLigada()) {
+				dados.ultimoConsumo = historico[NUMERO_ENTRADAS_HISTORICO - 1];
+			} else {
+				dados.ultimoConsumo = 0;
+			}
+
 			dados.prioridade = prioridadeAtual();
 			return dados;
 		}
@@ -669,7 +679,6 @@ class Gerente {
 		/*!
 			Método que sincroniza as placas, enviando e recebendo mensagens com dados.
 			\param dadosEnviar é a struct que contém os dados que esta placa estará enviando.
-			\sa enviarMensagemBroadcast(), atualizaHash()
 		*/
 		void sincronizar(Dados dadosEnviar) {
 			Dados* dadosRecebidos;
@@ -677,8 +686,9 @@ class Gerente {
 
 			Chronometer* cronSinc = new Chronometer();
 
-			long long tempoDeSinc = INTERVALO_ENVIO_MENSAGENS*60*1000000; // Minutos pra Microssegundos
+			long long tempoDeSinc = INTERVALO_ENVIO_MENSAGENS*60*1000000; // Minutos pra Microssegundos.
 			long long nextSend = 0;
+			long long nextReceive = 0;
 			cronSinc->reset();
 			cronSinc->start();
 			long long cronTime = cronSinc->read();
@@ -686,27 +696,28 @@ class Gerente {
 			while (cronTime < tempoDeSinc) {
 				if (cronTime >= nextSend) {
 					enviarMensagemBroadcast(dadosEnviar);
-					nextSend += 30000000; // 30 segundos.
-				} else {
+					nextSend += tempoDeSinc/15; // 15 envios durante a sincronização.
+				} else if (cronTime >= nextReceive) {
 					dadosRecebidos = receberMensagem();
-					elemento = new Hash_Element(dadosRecebidos,dadosRecebidos->remetente); // Hash é indexada pelo endereço da tomada
+					elemento = new Hash_Element(dadosRecebidos,dadosRecebidos->remetente); // Hash é indexada pelo endereço da tomada.
 					atualizaHash(elemento);
+					nextReceive += tempoDeSinc/30; // Recebe 30 vezes durante a sincronização.
 				}
-				//Alarm::delay(100000);
 				cronTime = cronSinc->read();
 			}
 			delete cronSinc;
 		}
 
 		/*!
-			Método que verifica se consumo previsto está acima do m´sximo e se alguma decisão deve ser tomada.
-			\sa mantemConsumoDentroDoLimite()
+			Método que verifica se consumo previsto esta acima do maximo e se alguma decisao deve ser tomada.
 		*/
 		void administrarConsumo() {
-			// Se o consumo até agora somado à previsão de consumo até o fim do mês ficam acima do consumo máximo
+			// Se o consumo até agora e o a previsão de consumo até o fim do mês estão acima do consumo máximo.
 			if (consumoMensal + consumoTotalPrevisto > maximoConsumoMensal) {
-				mantemConsumoDentroDoLimite(); // Desliga as tomadas necessárias para manter o consumo dentro do limite
-			} else { // Se o consumo está dentro do limite
+				cout << "  A previsao passa do limite." << endl;
+				mantemConsumoDentroDoLimite(); // Desliga as tomadas necessárias para manter o consumo dentro do limite.
+			} else { // Se o consumo esta dentro do limite
+				cout << "  A previsao esta dentro do limite. Posso ligar." << endl;
 				// Liga todas as tomadas
 				tomada->ligar();
 			}
@@ -717,13 +728,12 @@ class Gerente {
 			\param novo é o consumo atual da tomada que será inserido no histórico.
 		*/
 		void atualizaHistorico(float novo) {
-			cout << "Consumo efetivo desse mês: " << novo << endl;
 			if (tomada->estaLigada()) {
 				int i;
 				for (i = 0; i < (NUMERO_ENTRADAS_HISTORICO - 1); i++) {
 					historico[i] = historico[i+1];
 				}
-				// Consumo novo é adicionado no fim do vetor para manter coerência com a lógica da previsão de consumo
+				//consumo novo é adicionado no fim do vetor para manter coerência com a lógica da previsão de consumo
 				historico[NUMERO_ENTRADAS_HISTORICO - 1] = novo;
 			}
 		}
@@ -734,18 +744,18 @@ class Gerente {
 		*/
 		void atualizaHash(Hash_Element* e) {
 			Hash_Element* foundElement = hash->search_key(e->object()->remetente);
-			if (foundElement != 0) { // Se uma entrada para a tomada passada já existe
+			if (foundElement != 0) {
 				Dados* d =  foundElement->object();
-				//d->ligada = e->object()->ligada;
+				d->ligada = e->object()->ligada;
 				d->consumoPrevisto = e->object()->consumoPrevisto;
 				d->ultimoConsumo = e->object()->ultimoConsumo;
 				d->prioridade = e->object()->prioridade;
 				delete e->object();
 				delete e;
-			} else if (e->object()->remetente != (Address)-1) {
-				// Se elemento não está na hash e não é um elemento "vazio"(remetente é igual a -1 quando não há mensagem recebida)
+			} else if (e->object()->prioridade != -1) {
+				// Se elemento não está na hash e não é um elemento "vazio"(prioridade é igual a -1 quando não há mensagem recebida)
 				hash->insert(e);
-			} else if (e->object()->remetente == (Address) -1) { // Se foi recebida uma mensagem "vazia"(remetente igual a -1)
+			} else if (e->object()->prioridade == -1) {
 				delete e->object();
 				delete e;
 			}
@@ -768,10 +778,6 @@ class Gerente {
 
 		/*!
 			Método construtor da classe
-			\param maximo é o consumo máximo mensal.
-			\param t é a tomada a ser controlada.
-			\param r é um objeto Relogio que controla o dia atual.
-			\sa inicializarHistorico(), calculaQuantidadeQuartosDeDia()
 		*/
 		Gerente(float maximo, TomadaInteligente* t, Relogio* r) {
 			tomada = t;
@@ -782,6 +788,7 @@ class Gerente {
 			maximoConsumoMensal = maximo;
 
 			consumoMensal = 0;
+
 			consumoProprioPrevisto = 0;
 			consumoTotalPrevisto = 0;
 
@@ -810,7 +817,6 @@ class Gerente {
 
 		/*!
 			Método que envia mensagem para as outras tomadas.
-			\param d é uma struct Dados que contém os dados a serem enviados.
 		*/
 		void enviarMensagemBroadcast(Dados d) {
 			mensageiro->enviarBroadcast(d);
@@ -818,7 +824,6 @@ class Gerente {
 
 		/*!
 			Método que recebe mensagem das outras tomadas.
-			\return Ponteiro de Dados que indica os dados recebidos.
 		*/
 		Dados* receberMensagem() {
 			return mensageiro->receberMensagem();
@@ -826,16 +831,16 @@ class Gerente {
 
 		/*!
 			Método que atualiza o valor da previsão do consumo da tomada até o fim do mês. O valor é armazenado na variável global consumoProprioPrevisto.
+			\sa Previsor
 		*/
 		void fazerPrevisaoConsumoProprio() {
-			/*Cada previsão é para as próximas 6 horas. Assim, esse valor é multiplicado por quantas mais 6 horas faltam para acabar o mês
-				para depois sabermos se o consumo está dentro do limite.*/
+			/*Cada previsão é para as próximas 6 horas. Assim, esse valor é multiplicado por quantas mais 6 horas faltam para acabar o mês para depois sabermos se o consumo está dentro do limite.*/
 			float retorno = Previsor::preverConsumoProprio(historico);
 			consumoProprioPrevisto = retorno * quantidade6Horas;
 		}
 
 		/*!
-			Método que atualiza o valor da previsão do consumo total das tomadas até o fim do mês. O valor é armazenado na variável global consumoTotalPrevisto.
+			Método que atualiza o valor da previsão do consumo total das to até o fim do mês. O valor é armazenado na variável global consumoTotalPrevisto.
 		*/
 		void fazerPrevisaoConsumoTotal() {
 			consumoTotalPrevisto = Previsor::preverConsumoTotal(hash, consumoProprioPrevisto);
@@ -843,34 +848,32 @@ class Gerente {
 
 		/*!
 			Método que realiza a sincronização entre as tomadas a cada 6 horas.
-			\sa administrar(), dormir()
+			\sa administrar()
 		*/
 		void iniciar() {
 			Chronometer* cronPrincipal = new Chronometer();
 			Data data = relogio->getData();
 
-			// Tempo que passou desde o último quarto de dia.
+			// Tempo que passou desde o ultimo qarto de dia.
 			long long tempoQuePassou = ((data.hora*60*60 + data.minuto*60 + data.segundo) % (6*60*60)) * 1000000;
 			long long timeTillNextWake;
 			long long milisecsEm6Horas = 6*60*60*1000000.0;
 
-			cout << "Iniciando loop" << endl;
+			cout << "Iniciando Sistema" << endl << endl;
 
 			while (true) {
 				timeTillNextWake = milisecsEm6Horas - tempoQuePassou;
 
-				cout << "Indo dormir..." << endl << endl;
+				cout << "Indo dormir." << endl << endl;
 
 				dormir(timeTillNextWake);
 
-				cout << "Acordando" << endl;
+				cout << "Acordando." << endl;
 
 				cronPrincipal->reset();
 				cronPrincipal->start();
 
-				cout << "Pre Administrar" << endl;
 				administrar();
-				cout << "Pos Administrar" << endl;
 
 				cronPrincipal->stop();
 				tempoQuePassou = cronPrincipal->read();
@@ -879,7 +882,7 @@ class Gerente {
 		}
 
 		/*!
-			Método que, baseado no horário atual, descobre a prioridade certa.
+			Método que baseado no horário atual descobre a prioridade certa.
 			\return Valor da prioridade da tomada no período atual do dia.
 		*/
 		int prioridadeAtual() {
@@ -897,36 +900,38 @@ class Gerente {
 				case 3:
 					return prioridades.noite;
 			}
+
 		}
 
 		/*!
 			Método que verifica se a tomada deve desligar para manter o consumo mensal dentro do consumo máximo.
+			\return valor booleano que indica se a tomada deve desligar.
 		*/
 		void mantemConsumoDentroDoLimite() {
-			// Representa o quanto de consumo ainda resta até atingir o limite do mês
+			// Representa o quanto de consumo ainda resta até atingir o limite do mês.
 			float consumoRestante = maximoConsumoMensal - consumoMensal;
 
 			float sobraDeConsumo = 0;
 			float diferencaConsumo;
 
-			// É o consumo total de todas as tomadas de menor prioridade que esta
+			// É o consumo total de todas as tomadas de menor prioridade que esta.
 			float consumoInferiores = 0;
-			// É o consumo total de todas as tomadas de mesma prioridade
+			// É o consumo total de todas as tomadas de mesma prioridade.
 			float consumoMesmaPioridade = consumoProprioPrevisto;
-			// É o consumo total de todas as tomadas de mesma prioridade e de consumo inferior
+			// É o consumo total de todas as tomadas de mesma prioridade e de consumo inferior.
 			float menorConsumoMesmaPrioridade = 0;
-			// Indica se há outras tomadas com a mesma prioridade
+			// Indica se há outras tomadas com a mesma prioridade.
 			bool outrasComMesmaPrioridade = false;
 
 			for(auto iter = hash->begin(); iter != hash->end(); iter++) {
 				// Se iter não é vazio: begin() retorna um objeto vazio no inicio por algum motivo
 				if (iter != 0) {
-					if(prioridadeAtual() > iter->object()->prioridade) { // Outras tomadas que têm prioridade abaixo da minha prioridade
+					if(prioridadeAtual() > iter->object()->prioridade) { // Outras tomadas que têm prioridade abaixo. da minha prioridade.
 						consumoInferiores += iter->object()->consumoPrevisto;
 					} else if (prioridadeAtual() == iter->object()->prioridade) { // Outras tomadas com a mesma prioridade.
 						outrasComMesmaPrioridade = true;
 						consumoMesmaPioridade += iter->object()->consumoPrevisto;
-						if (consumoProprioPrevisto > iter->object()->consumoPrevisto) { // Tomadas cujo consumo é menor
+						if (consumoProprioPrevisto > iter->object()->consumoPrevisto) { // Tomadas cujo consumo é menor.
 							menorConsumoMesmaPrioridade += iter->object()->consumoPrevisto;
 						}
 					}
@@ -935,38 +940,50 @@ class Gerente {
 
 
 			diferencaConsumo = consumoTotalPrevisto - consumoInferiores;
-			if (diferencaConsumo <= consumoRestante) { // Se desligando as tomadas com prioridade inferior o consumo já fica dentro do limite
-				// Liga a tomada
+			if (diferencaConsumo <= consumoRestante) { // Se desligando as inferiores o consumo ja fica dentro do limite.
+				cout << "   Desligando as tomadas de prioridade inferior o consumo fica abaixo do maximo. Posso ficar ligada." << endl;
+				// Liga a tomada.
 				tomada->ligar();
-			} else { // Se mesmo desligando as tomadas com prioridade inferior o consumo ainda está abaixo do limite
-				if (outrasComMesmaPrioridade) { // Se há tomadas com a mesma prioridade
-					// Se desligando as tomadas de mesmo consumo completamente o consumo fica abaixo do necessário para o consumo máximo ser mantido
+			} else { // Se mesmo desligando as inferiors o consumo ainda esta abaixo do limite.
+				cout << "   Desligando as tomadas de prioridade inferior o consumo ainda fica acima do maximo. Sou uma candidata a ser desligada." << endl;
+				if (outrasComMesmaPrioridade) { // Se há tomadas com a mesma prioridade.
+					// Se desligando as tomada de mesmo consumo completamente o consumo fica abaixo do necessário para o consumo máximo ser mantido
+					cout << "    Ha outras tomadas de mesma prioridade, talvez nao precise desligar." << endl;
 					if ((diferencaConsumo - consumoMesmaPioridade) < consumoRestante) {
 						// Nesse caso, desligando apenas algumas tomadas de mesma prioridade que essa o consumo ainda pode ser mantido abaixo do limite
 						// Aqui, as tomadas com consumo menor são as escolhidas para desligamento
 						if ((diferencaConsumo - menorConsumoMesmaPrioridade)  <= consumoRestante) { // Se desligando as tomadas com mesma prioridade mas consumo menor é o suficiente para manter o limite de consumo
+							cout << "     Desligando as outras tomadas de mesma prioridade e que consomem menos o consumo fica abaixo do maximo, posso ligar." << endl;
 							// Essa tomada pode ser ligada
 							tomada->ligar();
 
 						} else { //Tomada é desligada ou dimmerizada
+							cout << "     Mesmo desligando todas as tomadas de mesma prioridade e que consomem menos, o consumo ainda fica acima do maximo, devo desligar." << endl;
+						tomada->desligar();
 							if ((diferencaConsumo - menorConsumoMesmaPrioridade - consumoProprioPrevisto)  <= consumoRestante && tomada->getTipo() == 2) {
-								// Se pode dimerizar
+								// Se pode dimmerizar
 								sobraDeConsumo = consumoRestante - (diferencaConsumo - menorConsumoMesmaPrioridade - consumoProprioPrevisto);
-								static_cast<TomadaMulti*>(tomada)->dimerizar(consumoProprioPrevisto, sobraDeConsumo);
+								static_cast<TomadaMulti*>(tomada)->dimmerizar(consumoProprioPrevisto, sobraDeConsumo);
+								cout << "      Dimmerizo para " << (static_cast<TomadaMulti*>(tomada)->getPorcentagem()*100) << "%." << endl;
 							} else {
+								cout << "      Desligo." << endl;
 								tomada->desligar();
 							}
 						}
 
-					} else { // Se mesmo desligando todas as tomadas de mesma prioridade o consumo ainda estiver acima do limite, não há o que fazer, apenas desligar
+					} else { // Se mesmo desligando todas as tomadas de mesma prioridade o consumo ainda estiver acima do limite, não ha o que fazer, então só desligue.
+						cout << "     Mesmo desligando todas as tomadas de mesma prioridade, o consumo ainda fica acima do maximo, devo desligar." << endl;
 						tomada->desligar();
 					}
-				} else { // Se não há outras tomadas com a mesma prioridade
+				} else { // Se não há outras tomadas com a mesma prioridade.
 					 // Se desligando a tomada completamente o consumo fica abaixo do necessário para o consumo máximo ser mantido e a tomada tem dimmer
+					cout << "    Nao ha outras tomadas de mesma prioridade, devo ser desligada." << endl;
 					if ((diferencaConsumo - consumoProprioPrevisto) < consumoRestante && tomada->getTipo() == 2) {
 						sobraDeConsumo = consumoRestante - (diferencaConsumo - consumoProprioPrevisto);
-						static_cast<TomadaMulti*>(tomada)->dimerizar(consumoProprioPrevisto, sobraDeConsumo);
+						static_cast<TomadaMulti*>(tomada)->dimmerizar(consumoProprioPrevisto, sobraDeConsumo);
+						cout << "     Dimmerizo para " << (static_cast<TomadaMulti*>(tomada)->getPorcentagem()*100) << "%." << endl;
 					} else { // Se não tem dimmer
+						cout << "     Desligo." << endl;
 						tomada->desligar();
 					}
 				}
@@ -975,13 +992,12 @@ class Gerente {
 
 		/*!
 			Método que calcula quantos 1/4 de dia faltam para o fim do mês. O valor é armazenado na variável global quantidade6Horas.
-			\sa diasRestantes()
 		*/
 		void calculaQuantidadeQuartosDeDia() {
-			// +1 para contar o dia de hoje e podermos subtrair os quartos que já passaram
+			// +1 para contar o dia de hoje e podermos subtrair os quartos que ja passaram.
 			quantidade6Horas = (diasRestantes()+1) * 4;
 			int hora = relogio->getData().hora;
-			// Ajusta da quantidade para quando a tomada é criada depois do primeiro 1/4 do dia
+			// Ajusta da quantidade para quando a tomada é criada depois do primeiro 1/4 do dia.
 			int quartoDoDia = (int) hora / 6;
 			quantidade6Horas = quantidade6Horas - quartoDoDia;
 		}
@@ -998,8 +1014,8 @@ class Gerente {
 		}
 
 		/*!
-			Método utilizado para deixar a placa esperando por grandes períodos de tempo.
-			\param microssegundos é o tempo que se deseja esperar em microssegundos.
+			Método utilizado para deixar a placa esperando por periodos extensivos de tempo.
+			\param microssegundos É o tempo que se deseja esperar em microssegundos.
 		*/
 		void dormir(long long microssegundos){
 			while (microssegundos > 0) {
@@ -1011,23 +1027,38 @@ class Gerente {
 
 		}
 
-		// Método para testes
+		// Metodo para testes
 		void printHash() {
-			cout << "Printando Hash:" << endl;
 			for(auto iter = hash->begin(); iter != hash->end(); iter++) {
 				if (iter != 0) {
 					Dados* d = iter->object();
-					cout << "Elemento da hash: " << endl;
-					cout << d->remetente << endl;
-					//cout << d->ligada << endl;
-					cout << d->consumoPrevisto << endl;
-					cout << d->ultimoConsumo << endl;
-					cout << d->prioridade << endl;
+					cout << "  Placa " << d->remetente << ":" << endl;
+					//cout << "" << d->ligada << endl;
+					cout << "   Consumo previsto: .. " << d->consumoPrevisto << endl;
+					cout << "   Ultimo consumo: .... " << d->ultimoConsumo << endl;
+					cout << "   Prioridade: ........ " << d->prioridade << endl;
 				}
 			}
-			cout << "Hash printada." << endl;
 		}
 };
+
+int prioridadeAtual(Relogio* relogio, TomadaInteligente* tomada) {
+	Prioridades prioridades = tomada->getPrioridades();
+	Data data = relogio->getData();
+	long long hora = data.hora;
+	int quartosDeDia = (int) hora / 6;
+	switch(quartosDeDia){
+		case 0:
+			return prioridades.madrugada;
+		case 1:
+			return prioridades.manha;
+		case 2:
+			return prioridades.tarde;
+		case 3:
+			return prioridades.noite;
+	}
+
+}
 
 //----------------------------------------------------------------------------
 //!  Método Main
@@ -1038,27 +1069,31 @@ int main() {
 
 	Alarm::delay(2*1000000);
 
-	cout << "Start" << endl << endl;
+	int idTeste = 2;
 
 	TomadaInteligente* t = new TomadaInteligente();
-	Relogio* r = new Relogio(2016,10,1,23,59);
-	Gerente* g = new Gerente(1000, t, r);
+	Relogio* r = new Relogio(2016,10,1,05,59);
+	Gerente* g = new Gerente(20000, t, r);
+
+	if (idTeste == 1) {
+		t->setPrioridadeMadrugada(2);
+		t->setPrioridadeManha(1);
+		t->setPrioridadeTarde(2);
+		t->setPrioridadeNoite(1);
+	} else {
+		t->setPrioridadeMadrugada(1);
+		t->setPrioridadeManha(2);
+		t->setPrioridadeTarde(1);
+		t->setPrioridadeNoite(2);
+	}
 
 
-	t->setPrioridadeMadrugada(1);
-	t->setPrioridadeManha(2);
-	t->setPrioridadeTarde(3);
-	t->setPrioridadeNoite(4);
 	t->ligar();
 
 	r->incrementarSegundo(58);
-	cout << "Iniciando..." << endl;
+
 	g->iniciar();
 
-	while (true);
 
-	//t.setPrioridades
-	//Relogio r;
-	//Gerente* g = new Gerente(t);
-	//g.iniciar();
+	while (true);
 };
