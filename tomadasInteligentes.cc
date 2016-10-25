@@ -1065,24 +1065,6 @@ class Gerente {
 		}
 };
 
-int prioridadeAtual(Relogio* relogio, TomadaInteligente* tomada) {
-	Prioridades prioridades = tomada->getPrioridades();
-	Data data = relogio->getData();
-	long long hora = data.hora;
-	int quartosDeDia = (int) hora / 6;
-	switch(quartosDeDia){
-		case 0:
-			return prioridades.madrugada;
-		case 1:
-			return prioridades.manha;
-		case 2:
-			return prioridades.tarde;
-		case 3:
-			return prioridades.noite;
-	}
-
-}
-
 //----------------------------------------------------------------------------
 //!  Método Main
 /*!
