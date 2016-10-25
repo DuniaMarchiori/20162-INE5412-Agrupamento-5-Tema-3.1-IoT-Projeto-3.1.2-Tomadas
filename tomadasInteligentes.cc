@@ -514,7 +514,7 @@ class TomadaMulti: public TomadaComDimmer, public TomadaInteligente {
 		TomadaMulti() {
 			tipo = 2; // Indica uma TomadaInteligente com dimmer
 		}
-		
+
 		/*!
 			Método que define o valor da porcentagem de dimmerização da tomada.
 		*/
@@ -530,18 +530,18 @@ class TomadaMulti: public TomadaComDimmer, public TomadaInteligente {
 		void dimerizar(float consumo, float sobra) {
 			dimPorcentagem = (sobra/consumo);
 		}
-	
+
 		/*!
 			Método que retorna o consumo atual da tomada.
 			\return Valor float que indica o consumo atual da tomada. Caso esteja desligada, o valor retornado é 0.
 		*/
 		float getConsumo() {
-			
+
 			// Método criado para possibilitar a simulação da análise de consumo de uma tomada a cada 6 horas.
  			// Em um sistema real este método retornaria o consumo da tomada.
 			TomadaInteligente::getConsumo();
 			return consumo * dimPorcentagem;
-			
+
 		}
 };
 
@@ -633,7 +633,7 @@ class Gerente {
 
 		/*!
 			Método que realiza o trabalho da placa, fazendo sua previsão, sincronização e ajustes no estado da tomada conforme o necessário.
-			\sa calculaQuantidadeQuartosDeDia(), atualizaHistorico(), fazerPrevisaoConsumoProprio(), preparaEnvio(), sincronizar(), 
+			\sa calculaQuantidadeQuartosDeDia(), atualizaHistorico(), fazerPrevisaoConsumoProprio(), preparaEnvio(), sincronizar(),
  				atualizaConsumoMensal(), fazerPrevisaoConsumoTotal(), administrarConsumo()
 		*/
 		void administrar() {
@@ -807,7 +807,7 @@ class Gerente {
 			}
 		}
 
-	//public: //TIRAR COMENTARIO
+	public:
 
 		/*!
 			Método construtor da classe.
@@ -1099,14 +1099,14 @@ int main() {
 
 	// Para instanciar uma tomada inteligente com dimmer, utilize TomadaMulti ao invés de TomadaInteligente.
 	TomadaInteligente* t = new TomadaInteligente();
-	
+
 	// Aqui instanciamos o Relógio que permite capturar a passagem do tempo.
 	// Ele será inicializado no horário que for passado à ele no construtor.
 	// Seus parâmetros são o ano, o mês, o dia, a hora e o minuto, respectivamente.
 	Relogio* r = new Relogio(2016,10,1,05,59);
 	Gerente* g = new Gerente(20000, t, r);
-	
-	// Estes métodos definem as prioridades da tomada ao longo do dia.	
+
+	// Estes métodos definem as prioridades da tomada ao longo do dia.
 	t->setPrioridadeMadrugada(2);
 	t->setPrioridadeManha(1);
 	t->setPrioridadeTarde(2);
