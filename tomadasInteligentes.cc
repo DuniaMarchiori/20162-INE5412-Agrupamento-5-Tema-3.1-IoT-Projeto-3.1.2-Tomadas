@@ -337,7 +337,7 @@ class Tomada {
 			Método construtor da classe
 		*/
 		Tomada() {
-			ligada = false;
+			ligada = true;
 			led  = new Led();
 		}
 
@@ -400,9 +400,9 @@ class TomadaComDimmer: virtual public Tomada {
 class TomadaInteligente: virtual public Tomada {
 	protected:
 		int tipo; /*!< Variável que indica o tipo da tomada.*/
+		float consumo; /*!< Variável que indica o consumo da tomada.*/
 	private:
 		Prioridades prioridades; /*!< Variável que contém as prioridade da tomada ao longo do dia.*/
-		float consumo; /*!< Variável que indica o consumo da tomada.*/
 
 	public:
 		/*!
@@ -477,10 +477,10 @@ class TomadaInteligente: virtual public Tomada {
 			Método que retorna o consumo atual da tomada.
 			\return Valor float que indica o consumo atual da tomada. Caso esteja desligada, o valor retornado é 0.
 		*/
-		float getConsumo() {
+		virtual float getConsumo() {
 
 			// Metodo criado para simular a analise de consumo de uma tomada a cada 6 horas.
-			// Em um sistema real este metodo retornaria o consumo da tomada.
+			// Em um sistema real este método retornaria o consumo da tomada.
 
 			if (ligada) {
 				unsigned int rand;
@@ -521,6 +521,19 @@ class TomadaMulti: public TomadaComDimmer, public TomadaInteligente {
 		*/
 		void dimmerizar(float consumo, float sobra) {
 			dimPorcentagem = (sobra/consumo);
+		}
+	
+		/*!
+			Método que retorna o consumo atual da tomada.
+			\return Valor float que indica o consumo atual da tomada. Caso esteja desligada, o valor retornado é 0.
+		*/
+		float getConsumo() {
+			
+			// Metodo criado para simular a analise de consumo de uma tomada a cada 6 horas.
+			// Em um sistema real este método retornaria o consumo da tomada.
+			TomadaInteligente::getConsumo();
+			return consumo * dimPorcentagem;
+			
 		}
 };
 
