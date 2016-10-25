@@ -481,7 +481,7 @@ class TomadaInteligente: virtual public Tomada {
 		virtual float getConsumo() {
 
 			// Método criado para possibilitar a simulação da análise de consumo de uma tomada a cada 6 horas.
- +			// Em um sistema real este método retornaria o consumo da tomada.
+			// Em um sistema real este método retornaria o consumo da tomada.
 
 			if (ligada) {
 				unsigned int rand;
