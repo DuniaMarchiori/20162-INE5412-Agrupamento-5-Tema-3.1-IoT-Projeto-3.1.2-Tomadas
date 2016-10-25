@@ -277,8 +277,8 @@ class Relogio {
 
 		/*!
 			Método que retorna quantos dias tem no mês atual.
- +			\param mes é um inteiro que indica o mês atual.
- +			\param ano é um inteiro que indica o ano atual.
+ 			\param mes é um inteiro que indica o mês atual.
+ 			\param ano é um inteiro que indica o ano atual.
 			\return Valor inteiro que representa quantos dias tem no mês.
 		*/
 		int getDiasNoMes(int mes, int ano) {
@@ -436,7 +436,7 @@ class TomadaInteligente: virtual public Tomada {
 
 		/*!
 			Método que altera a prioridade no período das 00:00 às 06:00.
- +			\param p é o novo valor da prioridade nesse horário.
+ 			\param p é o novo valor da prioridade nesse horário.
 		*/
 		void setPrioridadeMadrugada(int p) {
 			prioridades.madrugada = p;
@@ -444,7 +444,7 @@ class TomadaInteligente: virtual public Tomada {
 
 		/*!
 			Método que altera a prioridade no período das 06:00 às 12:00.
- +			\param p é o novo valor da prioridade nesse horário.
+ 			\param p é o novo valor da prioridade nesse horário.
 		*/
 		void setPrioridadeManha(int p) {
 			prioridades.manha = p;
@@ -452,7 +452,7 @@ class TomadaInteligente: virtual public Tomada {
 
 		/*!
 			Método que altera a prioridade no período das 12:00 às 18:00.
- +			\param p é o novo valor da prioridade nesse horário.
+ 			\param p é o novo valor da prioridade nesse horário.
 		*/
 		void setPrioridadeTarde(int p) {
 			prioridades.tarde = p;
@@ -460,7 +460,7 @@ class TomadaInteligente: virtual public Tomada {
 
 		/*!
 			Método que altera a prioridade no período das 18:00 às 00:00.
- +			\param p é o novo valor da prioridade nesse horário.
+ 			\param p é o novo valor da prioridade nesse horário.
 		*/
 		void setPrioridadeNoite(int p) {
 			prioridades.noite = p;
@@ -514,11 +514,18 @@ class TomadaMulti: public TomadaComDimmer, public TomadaInteligente {
 		TomadaMulti() {
 			tipo = 2; // Indica uma TomadaInteligente com dimmer
 		}
+		
+		/*!
+			Método que define o valor da porcentagem de dimmerização da tomada.
+		*/
+		void setDimerizacao(float porcentagem) {
+			dimPorcentagem = porcentagem;
+		}
 
 		/*!
 			Método que calcula a porcentagem de dimmerização da tomada. Essa porcentagem é armazenada na variável dimPorcentagem.
- +			\param consumo é o consumo previsto da tomada até o fim do mês.
- +			\param sobra é o máximo de consumo que a tomada pode ter para o limite máximo de consumo ser mantido.
+ 			\param consumo é o consumo previsto da tomada até o fim do mês.
+ 			\param sobra é o máximo de consumo que a tomada pode ter para o limite máximo de consumo ser mantido.
 		*/
 		void dimerizar(float consumo, float sobra) {
 			dimPorcentagem = (sobra/consumo);
@@ -531,7 +538,7 @@ class TomadaMulti: public TomadaComDimmer, public TomadaInteligente {
 		float getConsumo() {
 			
 			// Método criado para possibilitar a simulação da análise de consumo de uma tomada a cada 6 horas.
- +			// Em um sistema real este método retornaria o consumo da tomada.
+ 			// Em um sistema real este método retornaria o consumo da tomada.
 			TomadaInteligente::getConsumo();
 			return consumo * dimPorcentagem;
 			
@@ -552,7 +559,7 @@ class Previsor {
 
 		/*!
 			Método estático que estima o consumo da tomada para as pŕoximas 6 horas.
- +			\param historico é um vetor que contém os consumos da tomada.
+ 			\param historico é um vetor que contém os consumos da tomada.
 		*/
 		static float preverConsumoProprio(float historico[NUMERO_ENTRADAS_HISTORICO]) { //28 entradas corresponde a 7 dias(uma entrada a cada 6 horas)
             float previsao =   (1/406.0) * historico[0]
@@ -589,7 +596,7 @@ class Previsor {
 		/*!
 			Método que estima o consumo de todas as tomadas juntas até o fim do mês.
 			\param h é uma hash que contém os valores enviados pelas outras tomadas.
- +			\param minhaPrevisao é a previsão da tomada até o fim do mês.
+ 			\param minhaPrevisao é a previsão da tomada até o fim do mês.
 			\return Valor previsto para o consumo total das tomadas.
 		*/
 		static float preverConsumoTotal(Tabela* h, float minhaPrevisao) {
@@ -627,7 +634,7 @@ class Gerente {
 		/*!
 			Método que realiza o trabalho da placa, fazendo sua previsão, sincronização e ajustes no estado da tomada conforme o necessário.
 			\sa calculaQuantidadeQuartosDeDia(), atualizaHistorico(), fazerPrevisaoConsumoProprio(), preparaEnvio(), sincronizar(), 
- +				atualizaConsumoMensal(), fazerPrevisaoConsumoTotal(), administrarConsumo()
+ 				atualizaConsumoMensal(), fazerPrevisaoConsumoTotal(), administrarConsumo()
 		*/
 		void administrar() {
 
@@ -665,7 +672,7 @@ class Gerente {
 			cout << "  Consumo efetivo deste mes ate o momento: ............. " << consumoMensal << endl;
 			cout << "  Consumo maximo permitido ate o final do mes: ......... " << maximoConsumoMensal << endl;
 			cout << "  Consumo total previsto do sistema ate o fim do mes: .. " << (consumoTotalPrevisto+consumoMensal) << endl;
-			cout << "  Prioridade atual: ............................. " << dadosEnviar.prioridade << endl;
+			cout << "  Prioridade atual: .................................... " << dadosEnviar.prioridade << endl;
 
 			// Toma decisões dependendo de como está o consumo do sistema.
 			administrarConsumo();
@@ -677,7 +684,7 @@ class Gerente {
 		/*!
 			Método que prepara os dados a serem enviados para as outras tomadas.
 			\return Dados a serem enviados com os valores atuais da tomada.
- +			\sa prioridadeAtual()
+ 			\sa prioridadeAtual()
 		*/
 		Dados preparaEnvio() {
 			Dados dados;
@@ -729,7 +736,7 @@ class Gerente {
 
 		/*!
 			Método que verifica se consumo previsto está acima do m´sximo e se alguma decisão deve ser tomada.
- +			\sa mantemConsumoDentroDoLimite()
+ 			\sa mantemConsumoDentroDoLimite()
 		*/
 		void administrarConsumo() {
 			// Se o consumo até agora somado à previsão de consumo até o fim do mês ficam acima do consumo máximo.
@@ -739,8 +746,12 @@ class Gerente {
 			} else { // Se o consumo está dentro do limite
 				cout << "  A previsao esta dentro do limite. Posso ligar." << endl;
 				// Liga todas as tomadas
-				tomada->ligar();
-			}
+				if (tomada->getTipo() == 2) {
+					tomada->ligar();
+					static_cast<TomadaMulti*>(tomada)->setDimerizacao(1);
+				} else {
+					tomada->ligar();
+				}			}
 		}
 
 		/*!
@@ -801,9 +812,9 @@ class Gerente {
 		/*!
 			Método construtor da classe.
 			\param maximo é o consumo máximo mensal.
- +			\param t é a tomada a ser controlada.
- +			\param r é um objeto Relogio que controla o dia atual.
- +			\sa inicializarHistorico(), calculaQuantidadeQuartosDeDia()
+ 			\param t é a tomada a ser controlada.
+ 			\param r é um objeto Relogio que controla o dia atual.
+ 			\sa inicializarHistorico(), calculaQuantidadeQuartosDeDia()
 		*/
 		Gerente(float maximo, TomadaInteligente* t, Relogio* r) {
 			tomada = t;
@@ -860,8 +871,7 @@ class Gerente {
 			\sa Previsor
 		*/
 		void fazerPrevisaoConsumoProprio() {
-			/*Cada previsão é para as próximas 6 horas. Assim, esse valor é multiplicado por quantas mais 6 horas faltam para acabar o mês
- +				para depois sabermos se o consumo está dentro do limite.*/
+			/*Cada previsão é para as próximas 6 horas. Assim, esse valor é multiplicado por quantas mais 6 horas faltam para acabar o mês para depois sabermos se o consumo está dentro do limite.*/
 			float retorno = Previsor::preverConsumoProprio(historico);
 			consumoProprioPrevisto = retorno * quantidade6Horas;
 		}
@@ -968,7 +978,13 @@ class Gerente {
 			if (diferencaConsumo <= consumoRestante) { // Se desligando as tomadas com prioridade inferior o consumo já fica dentro do limite.
 				cout << "   Desligando as tomadas de prioridade inferior o consumo fica abaixo do maximo. Posso ficar ligada." << endl;
 				// Liga a tomada.
-				tomada->ligar();
+				if (tomada->getTipo() == 2) {
+					cout << "    Dimerizo para 100%." << endl;
+					tomada->ligar();
+					static_cast<TomadaMulti*>(tomada)->setDimerizacao(1);
+				} else {
+					tomada->ligar();
+				}
 			} else { // Se mesmo desligando as tomadas com prioridade inferior o consumo ainda está abaixo do limite
 				cout << "   Desligando as tomadas de prioridade inferior o consumo ainda fica acima do maximo. Sou uma candidata a ser desligada." << endl;
 				if (outrasComMesmaPrioridade) { // Se há tomadas com a mesma prioridade.
@@ -980,14 +996,20 @@ class Gerente {
 						if ((diferencaConsumo - menorConsumoMesmaPrioridade)  <= consumoRestante) { // Se desligando as tomadas com mesma prioridade mas consumo menor é o suficiente para manter o limite de consumo
 							cout << "     Desligando as outras tomadas de mesma prioridade e que consomem menos o consumo fica abaixo do maximo, posso ligar." << endl;
 							// Essa tomada pode ser ligada
-							tomada->ligar();
-
+							if (tomada->getTipo() == 2) {
+								cout << "      Dimerizo para 100%." << endl;
+								tomada->ligar();
+								static_cast<TomadaMulti*>(tomada)->setDimerizacao(1);
+							} else {
+								tomada->ligar();
+							}
 						} else { //Tomada é desligada ou dimerizada
 							cout << "     Mesmo desligando todas as tomadas de mesma prioridade e que consomem menos, o consumo ainda fica acima do maximo, devo desligar." << endl;
 						tomada->desligar();
 							if ((diferencaConsumo - menorConsumoMesmaPrioridade - consumoProprioPrevisto)  <= consumoRestante && tomada->getTipo() == 2) {
 								// Se pode dimerizar
 								sobraDeConsumo = consumoRestante - (diferencaConsumo - menorConsumoMesmaPrioridade - consumoProprioPrevisto);
+								tomada->ligar();
 								static_cast<TomadaMulti*>(tomada)->dimerizar(consumoProprioPrevisto, sobraDeConsumo);
 								cout << "      Dimerizo para " << (static_cast<TomadaMulti*>(tomada)->getPorcentagem()*100) << "%." << endl;
 							} else {
@@ -1005,6 +1027,7 @@ class Gerente {
 					cout << "    Nao ha outras tomadas de mesma prioridade, devo ser desligada." << endl;
 					if ((diferencaConsumo - consumoProprioPrevisto) < consumoRestante && tomada->getTipo() == 2) {
 						sobraDeConsumo = consumoRestante - (diferencaConsumo - consumoProprioPrevisto);
+						tomada->ligar();
 						static_cast<TomadaMulti*>(tomada)->dimerizar(consumoProprioPrevisto, sobraDeConsumo);
 						cout << "     Dimerizo para " << (static_cast<TomadaMulti*>(tomada)->getPorcentagem()*100) << "%." << endl;
 					} else { // Se não tem dimmer
@@ -1041,7 +1064,7 @@ class Gerente {
 
 		/*!
 			Método utilizado para deixar a placa esperando por grandes períodos de tempo.
- +			\param microssegundos é o tempo que se deseja esperar em microssegundos.
+ 			\param microssegundos é o tempo que se deseja esperar em microssegundos.
 		*/
 		void dormir(long long microssegundos){
 			while (microssegundos > 0) {
