@@ -1080,31 +1080,22 @@ int prioridadeAtual(Relogio* relogio, TomadaInteligente* tomada) {
 */
 int main() {
 
-	Alarm::delay(2*1000000);
-
-	int idTeste = 2;
-
+	// Para instanciar uma tomada inteligente com dimmer, utilize TomadaMulti ao invés de TomadaInteligente.
 	TomadaInteligente* t = new TomadaInteligente();
+	
+	// Aqui instanciamos o Relógio que permite capturar a passagem do tempo.
+	// Ele sera inicializado no horario que for passado à ele no construtor.
+	// Seus parametros são o ano, o mês, o dia, a hora e o minuto, respectivamente.
 	Relogio* r = new Relogio(2016,10,1,05,59);
 	Gerente* g = new Gerente(20000, t, r);
+	
+	// Estes metodos definem as Prioridades ao longo do dia da tomada.	
+	t->setPrioridadeMadrugada(2);
+	t->setPrioridadeManha(1);
+	t->setPrioridadeTarde(2);
+	t->setPrioridadeNoite(1);
 
-	if (idTeste == 1) {
-		t->setPrioridadeMadrugada(2);
-		t->setPrioridadeManha(1);
-		t->setPrioridadeTarde(2);
-		t->setPrioridadeNoite(1);
-	} else {
-		t->setPrioridadeMadrugada(1);
-		t->setPrioridadeManha(2);
-		t->setPrioridadeTarde(1);
-		t->setPrioridadeNoite(2);
-	}
-
-
-	t->ligar();
-
-	r->incrementarSegundo(58);
-
+	// Aqui é iniciado o sistema.
 	g->iniciar();
 
 
