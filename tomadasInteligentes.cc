@@ -662,8 +662,9 @@ class Gerente {
 			// Atualiza as previsões com base nos novos dados recebidos.
 			atualizaConsumoMensal();
 			fazerPrevisaoConsumoTotal(); // Considera todas as tomadas, mesmo as desligadas.
-			cout << "  Consumo maximo permitido ate o final do mes: .. " << maximoConsumoMensal << endl;
-			cout << "  Consumo total do sistema ate o fim do mes: .... " << consumoTotalPrevisto << endl;
+			cout << "  Consumo efetivo deste mes ate o momento: ............. " << consumoMensal << endl;
+			cout << "  Consumo maximo permitido ate o final do mes: ......... " << maximoConsumoMensal << endl;
+			cout << "  Consumo total previsto do sistema ate o fim do mes: .. " << (consumoTotalPrevisto+consumoMensal) << endl;
 			cout << "  Prioridade atual: ............................. " << dadosEnviar.prioridade << endl;
 
 			// Toma decisões dependendo de como está o consumo do sistema.
@@ -1055,11 +1056,10 @@ class Gerente {
 			for(auto iter = hash->begin(); iter != hash->end(); iter++) {
 				if (iter != 0) {
 					Dados* d = iter->object();
-					cout << "  Placa " << d->remetente << ":" << endl;
-					//cout << "" << d->ligada << endl;
-					cout << "   Consumo previsto: .. " << d->consumoPrevisto << endl;
-					cout << "   Ultimo consumo: .... " << d->ultimoConsumo << endl;
-					cout << "   Prioridade: ........ " << d->prioridade << endl;
+					cout << "   Placa " << d->remetente << ":" << endl;
+					cout << "    Consumo previsto: .. " << d->consumoPrevisto << endl;
+					cout << "    Ultimo consumo: .... " << d->ultimoConsumo << endl;
+					cout << "    Prioridade: ........ " << d->prioridade << endl;
 				}
 			}
 		}
