@@ -720,7 +720,7 @@ class Gerente {
 					dadosRecebidos = receberMensagem();
 					elemento = new Hash_Element(dadosRecebidos,dadosRecebidos->remetente); // Hash é indexada pelo endereço da tomada.
 					atualizaHash(elemento);
-					nextReceive += tempoDeSinc/30; // Recebe 30 vezes durante a sincronização.
+					nextReceive += tempoDeSinc/300; // Recebe 300 vezes durante a sincronização.
 				}
 				cronTime = cronSinc->read();
 			}
