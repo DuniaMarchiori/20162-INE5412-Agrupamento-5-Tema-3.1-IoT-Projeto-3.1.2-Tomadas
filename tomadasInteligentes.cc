@@ -39,6 +39,7 @@ struct Dados {
     float consumoPrevisto; /*!< Corresponde ao consumo previsto da tomada até o fim do mês. */
 	float ultimoConsumo; /*!< Corresponde ao valor do consumo da tomada nas últimas 6 horas. */
     int prioridade; /*!< Corresponde à prioridade da tomada no período de envio da mensagem. */
+    char configuracao[]; /*!< É uma possível configuração que precise ser feita pela tomada. */
 };
 
 //!  Struct Data
@@ -159,13 +160,29 @@ class Relogio {
 		/*!
 			Método construtor da classe.
 		*/
-		Relogio(int a, int m, int d, int h, int min) {
+		/*Relogio(int a, int m, int d, int h, int min) {
 			cronometro = new Chronometer();
 			data.ano = a;
 			data.mes= m;
 			data.dia = d;
 			data.hora = h;
 			data.minuto = min;
+			data.segundo = 0;
+			data.microssegundos = 0;
+			cronometro->reset();
+			cronometro->start();
+			inicializarMeses();
+		}*/
+		Relogio() {
+			cronometro = new Chronometer();
+
+			// data default
+			data.ano = 2016;
+			data.mes= 1;
+			data.dia = 1;
+			data.hora = 0;
+			data.minuto = 0;
+
 			data.segundo = 0;
 			data.microssegundos = 0;
 			cronometro->reset();
@@ -180,6 +197,30 @@ class Relogio {
 		Data getData() {
 			atualizaRelogio();
 			return data;
+		}
+
+		void setData(Data d) {
+			data = d;
+		}
+
+		void setAno(int a) {
+			data.ano = a;
+		}
+
+		void setMes(int m) {
+			data.mes= m;
+		}
+
+		void setDia(int d) {
+			data.dia = d;
+		}
+
+		void setHora(int h) {
+			data.hora = h;
+		}
+
+		void setMinuto(int m) {
+			data.minuto = m;
 		}
 
 		/*!
@@ -412,7 +453,7 @@ class TomadaInteligente: virtual public Tomada {
 		TomadaInteligente() {
 			consumo = 0;
 			tipo = 1; //indica uma TomadaInteligente
-			setPrioridades(1);
+			setPrioridades(1); // prioridade padrão é 1
 		}
 
 		/*!
@@ -478,7 +519,7 @@ class TomadaInteligente: virtual public Tomada {
 			Método que retorna o consumo atual da tomada.
 			\return Valor float que indica o consumo atual da tomada. Caso esteja desligada, o valor retornado é 0.
 		*/
-		virtual float getConsumo() {
+		virtual float getConsumo() { //mudar o random
 
 			// Método criado para possibilitar a simulação da análise de consumo de uma tomada a cada 6 horas.
 			// Em um sistema real este método retornaria o consumo da tomada.
@@ -628,6 +669,7 @@ class Gerente {
 		float consumoTotalPrevisto; /*!< Variável que indica o consumo total previsto no mês.*/
 		float *historico; /*!< Vetor que guarda o consumo da tomada a cada 6 horas.*/
 		int quantidade6Horas; /*!< Variável que indica a quantidade de quartos de dia(6 horas) que faltam para o fim do mês.*/
+		float consumoProprio; /*!< Variável que indica o consumo da tomada no último período.*/ 
 
 
 		/*!
@@ -645,7 +687,7 @@ class Gerente {
 
 			cout << "- Previsao." << endl;
 			// Preparando a previsao própria.
-			float ultimoConsumo = tomada->getConsumo();
+			float ultimoConsumo = consumoProprio;
 			cout << "  Consumo efetivo das ultimas 6h: " << ultimoConsumo << endl;
 			atualizaHistorico(ultimoConsumo);
 			fazerPrevisaoConsumoProprio();
@@ -678,6 +720,7 @@ class Gerente {
 
 			// Atualiza a variável de controle que indica quantas verificações ainda serão feitas dentro desse mês.
 			quantidade6Horas--;
+			consumoProprio = 0;
 		}
 
 		/*!
@@ -807,33 +850,6 @@ class Gerente {
 			}
 		}
 
-	public:
-
-		/*!
-			Método construtor da classe.
-			\param maximo é o consumo máximo mensal.
- 			\param t é a tomada a ser controlada.
- 			\param r é um objeto Relogio que controla o dia atual.
- 			\sa inicializarHistorico(), calculaQuantidadeQuartosDeDia()
-		*/
-		Gerente(float maximo, TomadaInteligente* t, Relogio* r) {
-			tomada = t;
-			relogio = r;
-			mensageiro = new Mensageiro();
-			hash = new Tabela();
-
-			maximoConsumoMensal = maximo;
-
-			consumoMensal = 0;
-			consumoProprioPrevisto = 0;
-			consumoTotalPrevisto = 0;
-
-			historico = new float[NUMERO_ENTRADAS_HISTORICO];
-			inicializarHistorico();
-
-			calculaQuantidadeQuartosDeDia();
-		}
-
 		/*!
 			Método que inicializa todos os valores do histórico para 0.
 		*/
@@ -841,6 +857,32 @@ class Gerente {
 			for (int i = 0; i < NUMERO_ENTRADAS_HISTORICO; i++) {
 				historico[i] = 0;
 			}
+		}
+
+	public:
+
+		/*!
+			Método construtor da classe.
+ 			\param t é a tomada a ser controlada.
+ 			\sa inicializarHistorico(), calculaQuantidadeQuartosDeDia()
+		*/
+		Gerente(TomadaInteligente* t) {
+			tomada = t;
+			relogio =  new Relogio();
+			mensageiro = new Mensageiro();
+			hash = new Tabela();
+
+			maximoConsumoMensal = 1000; //consumo máximo padrão
+
+			consumoMensal = 0;
+			consumoProprio = 0;
+			consumoProprioPrevisto = 0;
+			consumoTotalPrevisto = 0;
+
+			historico = new float[NUMERO_ENTRADAS_HISTORICO];
+			inicializarHistorico();
+
+			calculaQuantidadeQuartosDeDia();
 		}
 
 		/*!
@@ -885,9 +927,9 @@ class Gerente {
 
 		/*!
 			Método que realiza a sincronização entre as tomadas a cada 6 horas.
-			\sa administrar(), dormir()
+			\sa administrar(), pausa()
 		*/
-		void iniciar() {
+		void iniciar() { //menos tempo entre as sincronizações
 			Chronometer* cronPrincipal = new Chronometer();
 			Data data = relogio->getData();
 
@@ -901,9 +943,9 @@ class Gerente {
 			while (true) {
 				timeTillNextWake = milisecsEm6Horas - tempoQuePassou;
 
-				cout << "Indo dormir." << endl << endl;
+				cout << "Pausa entre sincronizacoes." << endl << endl;
 
-				dormir(timeTillNextWake);
+				pausa(timeTillNextWake);
 
 				cout << "Acordando." << endl;
 
@@ -1063,17 +1105,17 @@ class Gerente {
 		}
 
 		/*!
-			Método utilizado para deixar a placa esperando por grandes períodos de tempo.
- 			\param microssegundos é o tempo que se deseja esperar em microssegundos.
+			Método em que a placa soma seu consumo nos períodos entre sincronizações.
+ 			\param microssegundos é o tempo em microssegundos que se deseja esperar até a próxima sincronização.
 		*/
-		void dormir(long long microssegundos){
+		void pausa(long long microssegundos){
 			while (microssegundos > 0) {
 				RTC::Microsecond timeSlept = (RTC::Microsecond) microssegundos;
 				Alarm::delay(timeSlept);
 				relogio->atualizaRelogio();
 				microssegundos -= timeSlept;
 			}
-
+			// consumoProprio soma getConsumo
 		}
 
 		// Metodo para testes
@@ -1103,8 +1145,8 @@ int main() {
 	// Aqui instanciamos o Relógio que permite capturar a passagem do tempo.
 	// Ele será inicializado no horário que for passado à ele no construtor.
 	// Seus parâmetros são o ano, o mês, o dia, a hora e o minuto, respectivamente.
-	Relogio* r = new Relogio(2016,10,1,05,59);
-	Gerente* g = new Gerente(20000, t, r);
+	//Relogio* r = new Relogio(2016,10,1,05,59);
+	//Gerente* g = new Gerente(20000, t, r);
 
 	// Estes métodos definem as prioridades da tomada ao longo do dia.
 	t->setPrioridadeMadrugada(2);
