@@ -10,6 +10,7 @@
 
 #define INTERVALO_ENVIO_MENSAGENS 5 /*!< Intervalo(em minutos) em que são feitos envio e recebimento de mensagens entre as tomadas. */
 #define NUMERO_ENTRADAS_HISTORICO 28 /*!< Quantidade de entradas no histórico. Cada entrada corresponde ao consumo a cada 6 horas. */
+#define NUMERO_CHAR_MENSAGEM 28 /*!< Quantidade máxima de caracteres por mensagem. */
 
 using namespace EPOS;
 
@@ -39,7 +40,7 @@ struct Dados {
     float consumoPrevisto; /*!< Corresponde ao consumo previsto da tomada até o fim do mês. */
 	float ultimoConsumo; /*!< Corresponde ao valor do consumo da tomada nas últimas 6 horas. */
     int prioridade; /*!< Corresponde à prioridade da tomada no período de envio da mensagem. */
-    char configuracao[]; /*!< É uma possível configuração que precise ser feita pela tomada. */
+    char configuracao[NUMERO_CHAR_MENSAGEM]; /*!< É uma possível configuração que precise ser feita pela tomada. */
 };
 
 //!  Struct Data
