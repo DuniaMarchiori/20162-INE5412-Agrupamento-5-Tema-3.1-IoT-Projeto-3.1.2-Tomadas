@@ -6,6 +6,8 @@
 #include <utility/random.h>
 #include <alarm.h>
 #include <chronometer.h>
+#include <usb.h> 
+#include <utility/math.h> 
 
 
 #define INTERVALO_ENVIO_MENSAGENS 5 /*!< Intervalo(em minutos) em que são feitos envio e recebimento de mensagens entre as tomadas. */
