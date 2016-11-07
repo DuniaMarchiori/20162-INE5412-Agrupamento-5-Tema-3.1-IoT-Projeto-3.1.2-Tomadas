@@ -10,7 +10,7 @@
 
 #define INTERVALO_ENVIO_MENSAGENS 5 /*!< Intervalo(em minutos) em que são feitos envio e recebimento de mensagens entre as tomadas. */
 #define NUMERO_ENTRADAS_HISTORICO 28 /*!< Quantidade de entradas no histórico. Cada entrada corresponde ao consumo a cada 6 horas. */
-#define NUMERO_CHAR_MENSAGEM 28 /*!< Quantidade máxima de caracteres por mensagem. */
+#define NUMERO_CHAR_CONFIG 40 /*!< Quantidade máxima de caracteres por mensagem. */
 
 using namespace EPOS;
 
@@ -40,7 +40,7 @@ struct Dados {
     float consumoPrevisto; /*!< Corresponde ao consumo previsto da tomada até o fim do mês. */
 	float ultimoConsumo; /*!< Corresponde ao valor do consumo da tomada nas últimas 6 horas. */
     int prioridade; /*!< Corresponde à prioridade da tomada no período de envio da mensagem. */
-    char configuracao[NUMERO_CHAR_MENSAGEM]; /*!< É uma possível configuração que precise ser feita pela tomada. */
+    char configuracao[NUMERO_CHAR_CONFIG]; /*!< É uma possível configuração que precise ser feita pela tomada. */
 };
 
 //!  Struct Data
@@ -125,6 +125,71 @@ class Mensageiro {
 		*/
 		const Address obterEnderecoNIC() {
 			return nic->address();
+		}
+
+		/*!
+			Método que retorna um endereço, convertendo seus valores hexadecimais para decimais.
+			\param endereco string com o endereço em hexadecimal.
+			\param retorno ponteiro que recebera a string convertida.
+		*/
+		void converterEndereco(char* endereco, char* retorno) {
+			char endA[3];
+			char endB[3];
+
+			int numA = 0;
+			int numB = 0;
+			int num = 0;
+			char c;
+			for (int i = 0; i < 5; i++) {
+				if (i == 2) {
+					i++;
+				}
+				c = endereco[i];
+				switch (c) {
+					case 'a':
+						num = 10;
+						break;
+					case 'b':
+						num = 11;
+						break;
+					case 'c':
+						num = 12;
+						break;
+					case 'd':
+						num = 13;
+						break;
+					case 'e':
+						num = 14;
+						break;
+					case 'f':
+						num = 15;
+						break;
+					default:
+						num = c - '0';
+						break;
+				}
+				if (i < 2) {
+					numA += num*pow(16, (1-i));
+				} else {
+					numB += num*pow(16, (4-i));
+				}
+			}
+
+			for (int i = 0; i < 3; i++) {
+				endA[2-i] = (numA % 10) + '0';
+				numA /= 10;
+				endB[2-i] = (numB % 10) + '0';
+				numB /= 10;
+			}
+
+			for (int i = 0; i < 6; i++) {
+				if (i < 3) {
+					retorno[i] = endA[i];
+				} else {
+					retorno[i+1] = endB[i-3];
+				}
+			}
+			retorno[3] = ':';
 		}
 };
 
@@ -670,7 +735,7 @@ class Gerente {
 		float consumoTotalPrevisto; /*!< Variável que indica o consumo total previsto no mês.*/
 		float *historico; /*!< Vetor que guarda o consumo da tomada a cada 6 horas.*/
 		int quantidade6Horas; /*!< Variável que indica a quantidade de quartos de dia(6 horas) que faltam para o fim do mês.*/
-		float consumoProprio; /*!< Variável que indica o consumo da tomada no último período.*/ 
+		float consumoProprio; /*!< Variável que indica o consumo da tomada no último período.*/
 
 
 		/*!
@@ -1119,6 +1184,93 @@ class Gerente {
 			// consumoProprio soma getConsumo
 		}
 
+		/*!
+			Método que trata de alterações na configuração da tomada através de mensagens USB.
+		*/
+		void configuracaoViaUSB() {
+			if (temMsgUSB()) {
+				char strReceived[NUMERO_CHAR_CONFIG];
+				receberConfigViaUSB(strReceived);
+				processarComando(strReceived, true);
+			}
+		}
+
+		/*!
+			Método que verifica se há alguma mensagem de configuração sendo transmitida por USB.
+			\return Valor booleano que representa se hà uma mensagem via USB ou não.
+		*/
+		bool temMsgUSB() {
+			return USB::ready_to_get();
+		}
+
+		/*!
+			Método que recebe mensagens de configuração via USB.
+			\param receivedStr é o char* que irá receber a mensagem.
+		*/
+		void receberConfigViaUSB(char* receivedStr) {
+
+			// Para garantir que não vai ter lixo na mensagem.
+			for (int i; i < NUMERO_CHAR_CONFIG; i++) {
+				receivedStr[i] = '\0';
+			}
+
+			if (temMsgUSB()) {
+				int cont = 0;
+				while (temMsgUSB()) {
+					char c = USB::get();
+					receivedStr[cont] = c;
+					cont++;
+				}
+			} else {
+				receivedStr = "NOCON";
+			}
+		}
+
+		/*!
+			Método que executa os comandos de configuração.
+			\param comando é o comando que será executado.
+		*/
+		void processarComando(char* comando, bool reenviar) {
+
+			bool todos = false;
+			bool souAlvo = false;
+
+			char destino[5];
+			strncpy(destino, comando, 5);
+			Address* addDestino = new Address(destino);
+			Address meuAdd = mensageiro->obterEnderecoNIC();
+
+			if (*addDestino == meuAdd) {
+				souAlvo = true;
+			} else if (strcmp(destino, "TODOS") == 0) {
+				souAlvo = true;
+				todos = true;
+			}
+
+			if (souAlvo) {
+				char cmd[7];
+				strncpy(cmd, comando+6, 7);
+
+				if (strcmp(cmd, "PRIORID") == 0) {
+
+				} else if (strcmp(cmd, "DESLIGA") == 0) {
+
+				} else if (strcmp(cmd, "RELOGIO") == 0) {
+
+				} else if (strcmp(cmd, "CONSUMO") == 0) {
+
+				} else {
+
+				}
+			}
+
+			if (reenviar && (todos || !souAlvo)) {
+				// Não interessa pra mim, e reenvio esta habilitado
+				// Reenviar.
+			}
+
+		}
+
 		// Metodo para testes
 		void printHash() {
 			for(auto iter = hash->begin(); iter != hash->end(); iter++) {
@@ -1148,12 +1300,13 @@ int main() {
 	// Seus parâmetros são o ano, o mês, o dia, a hora e o minuto, respectivamente.
 	//Relogio* r = new Relogio(2016,10,1,05,59);
 	//Gerente* g = new Gerente(20000, t, r);
+	Gerente* g = new Gerente(t);
 
 	// Estes métodos definem as prioridades da tomada ao longo do dia.
-	t->setPrioridadeMadrugada(2);
-	t->setPrioridadeManha(1);
-	t->setPrioridadeTarde(2);
-	t->setPrioridadeNoite(1);
+	t->setPrioridadeMadrugada(5);
+	t->setPrioridadeManha(5);
+	t->setPrioridadeTarde(5);
+	t->setPrioridadeNoite(5);
 
 	// Aqui é iniciado o sistema.
 	g->iniciar();
