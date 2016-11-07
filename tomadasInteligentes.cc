@@ -1237,9 +1237,11 @@ class Gerente {
 			bool todos = false;
 			bool souAlvo = false;
 
-			char destino[5];
-			strncpy(destino, comando, 5);
-			Address* addDestino = new Address(destino);
+			char destinoHex[5];
+			strncpy(destinoHex, comando, 5);
+			char destinoDec[7];
+			converterEndereco(destinoHex, destinoDec);
+			Address* addDestino = new Address(destinoDec);
 			Address meuAdd = mensageiro->obterEnderecoNIC();
 
 			if (*addDestino == meuAdd) {
