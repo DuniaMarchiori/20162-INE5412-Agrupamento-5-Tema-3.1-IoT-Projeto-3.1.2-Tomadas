@@ -6,8 +6,9 @@
 #include <utility/random.h>
 #include <alarm.h>
 #include <chronometer.h>
-#include <usb.h> 
-#include <utility/math.h> 
+#include <usb.h>
+#include <utility/math.h>
+#include <utility/string.h>
 
 
 #define INTERVALO_ENVIO_MENSAGENS 5 /*!< Intervalo(em minutos) em que são feitos envio e recebimento de mensagens entre as tomadas. */
@@ -43,6 +44,7 @@ struct Dados {
 	float ultimoConsumo; /*!< Corresponde ao valor do consumo da tomada nas últimas 6 horas. */
     int prioridade; /*!< Corresponde à prioridade da tomada no período de envio da mensagem. */
     char configuracao[NUMERO_CHAR_CONFIG]; /*!< É uma possível configuração que precise ser feita pela tomada. */
+	bool podeDesligar; /*!< Indica se a tomada pode ser desligada no período de envio da mensagem. */
 };
 
 //!  Struct Data
@@ -114,6 +116,8 @@ class Mensageiro {
 				msg->consumoPrevisto = -1;
 				msg->ultimoConsumo = -1;
 				msg->prioridade = -1;
+				msg->configuracao[0] = '\0';
+				msg->podeDesligar = -1;
 			} else {
 				cout << "   Mensagem Recebida de " << msg->remetente << endl;
 			}
@@ -513,6 +517,7 @@ class TomadaInteligente: virtual public Tomada {
 		float consumo; /*!< Variável que indica o consumo da tomada.*/
 	private:
 		Prioridades prioridades; /*!< Variável que contém as prioridade da tomada ao longo do dia.*/
+		bool podeDesligar[4];
 
 	public:
 		/*!
@@ -520,8 +525,12 @@ class TomadaInteligente: virtual public Tomada {
 		*/
 		TomadaInteligente() {
 			consumo = 0;
-			tipo = 1; //indica uma TomadaInteligente
-			setPrioridades(1); // prioridade padrão é 1
+			tipo = 1; // Indica uma TomadaInteligente
+			setPrioridades(1); // Prioridade padrão é 1
+			setPodeDesligar(true, 0);
+			setPodeDesligar(true, 1);
+			setPodeDesligar(true, 2);
+			setPodeDesligar(true, 3);
 		}
 
 		/*!
@@ -576,11 +585,29 @@ class TomadaInteligente: virtual public Tomada {
 		}
 
 		/*!
+			Método que altera se a tomada pode ou não ser desligada no periodo especificado.
+ 			\param valor é o valor booleano que especifica se a tomada pode ou não desligar.
+ 			\param periodo é o periodo em que sera feita a alteração. (0 -Madrugada, 1 -Manhã, 2 -Tarde, 3 -Noite)
+		*/
+		void setPodeDesligar(bool valor, int periodo) {
+			podeDesligar[periodo] = valor;
+		}
+
+		/*!
 			Método que retorna as prioridades da tomada.
 			\return Struct que contém as quatro possiveis prioridades da tomada.
 		*/
 		Prioridades getPrioridades() {
 			return prioridades;
+		}
+
+		/*!
+			Método que retorna se a tomada pode desligar.
+ 			\param periodo é o periodo em que se deseja consultar. (0 -Madrugada, 1 -Manhã, 2 -Tarde, 3 -Noite)
+			\return Valor booleano que representa se a tomada pode desligar.
+		*/
+		bool getPodeDesligar(int periodo) {
+			return podeDesligar[periodo];
 		}
 
 		/*!
@@ -807,7 +834,9 @@ class Gerente {
 				dados.ultimoConsumo = 0;
 			}
 
+			dados.configuracao[0] = '\0';
 			dados.prioridade = prioridadeAtual();
+			dados.podeDesligar = podeDesligarAtual();
 			return dados;
 		}
 
@@ -887,13 +916,22 @@ class Gerente {
 		void atualizaHash(Hash_Element* e) {
 			Hash_Element* foundElement = hash->search_key(e->object()->remetente);
 			if (foundElement != 0) {  // Se uma entrada para a tomada passada já existe
+
+				/*
 				Dados* d =  foundElement->object();
 				//d->ligada = e->object()->ligada;
 				d->consumoPrevisto = e->object()->consumoPrevisto;
 				d->ultimoConsumo = e->object()->ultimoConsumo;
 				d->prioridade = e->object()->prioridade;
+				d->configuracao = e->object()->configuracao;
+				d->podeDesligar = e->object()->podeDesligar;
 				delete e->object();
 				delete e;
+				*/
+
+				delete foundElement->object();
+				delete foundElement;
+				hash->insert(e);
 			} else if (e->object()->prioridade != -1) {
 				// Se elemento não está na hash e não é um elemento "vazio"(prioridade é igual a -1 quando não há mensagem recebida)
 				hash->insert(e);
@@ -1047,6 +1085,17 @@ class Gerente {
 				case 3:
 					return prioridades.noite;
 			}
+		}
+
+		/*!
+			Método que, baseado no horário atual, descobre se a tomada pode desligar.
+			\return Valor booleano que especifica se a tomada pode desligar.
+		*/
+		int podeDesligarAtual() {
+			Data data = relogio->getData();
+			long long hora = data.hora;
+			int quartosDeDia = (int) hora / 6;
+			return tomada->getPodeDesligar(quartosDeDia);
 		}
 
 		/*!
@@ -1238,31 +1287,90 @@ class Gerente {
 			bool souAlvo = false;
 
 			char destinoHex[5];
-			strncpy(destinoHex, comando, 5);
+			for (int i; i < 5; i++) {
+				destinoHex[i] = comando[i];
+			}
+			destinoHex[5] = '\0';
+
 			char destinoDec[7];
-			converterEndereco(destinoHex, destinoDec);
+			mensageiro->converterEndereco(destinoHex, destinoDec);
 			Address* addDestino = new Address(destinoDec);
 			Address meuAdd = mensageiro->obterEnderecoNIC();
 
+
+
 			if (*addDestino == meuAdd) {
 				souAlvo = true;
-			} else if (strcmp(destino, "TODOS") == 0) {
+			} else if (strcmp(destinoHex, "TODAS") == 0) {
 				souAlvo = true;
 				todos = true;
 			}
 
 			if (souAlvo) {
 				char cmd[7];
-				strncpy(cmd, comando+6, 7);
+				for (int i; i < 7; i++) {
+					cmd[i] = comando[i+6];
+				}
+				cmd[7] = '\0';
+
+				cout << cmd << endl;
 
 				if (strcmp(cmd, "PRIORID") == 0) {
+					char periodo[3];
+					for (int i; i < 3; i++) {
+						periodo[i] = comando[i+14];
+					}
+					periodo[3] = '\0';
+
+					int prioridade = strToNum(comando+18);
+
+					if (prioridade > 0){
+						if (strcmp(periodo, "MAD") == 0) {
+							tomada->setPrioridadeMadrugada(prioridade);
+						} else if (strcmp(periodo, "MAN") == 0) {
+							tomada->setPrioridadeManha(prioridade);
+						} else if (strcmp(periodo, "TAR") == 0) {
+							tomada->setPrioridadeTarde(prioridade);
+						} else if (strcmp(periodo, "NOI") == 0) {
+							tomada->setPrioridadeNoite(prioridade);
+						}
+					}
 
 				} else if (strcmp(cmd, "DESLIGA") == 0) {
+					char periodo[3];
+					for (int i; i < 3; i++) {
+						periodo[i] = comando[i+14];
+					}
+					periodo[3] = '\0';
 
+					char valorStr[3];
+					for (int i; i < 3; i++) {
+						valorStr[i] = comando[i+18];
+					}
+					valorStr[3] = '\0';
+
+					bool valor;
+					if (strcmp(valorStr, "FALSE") == 0) {
+						valor = false;
+					} else {
+						valor = true;
+					}
+
+					if (strcmp(periodo, "MAD") == 0) {
+						tomada->setPodeDesligar(valor, 0);
+					} else if (strcmp(periodo, "MAN") == 0) {
+						tomada->setPodeDesligar(valor, 1);
+					} else if (strcmp(periodo, "TAR") == 0) {
+						tomada->setPodeDesligar(valor, 2);
+					} else if (strcmp(periodo, "NOI") == 0) {
+						tomada->setPodeDesligar(valor, 3);
+					}
 				} else if (strcmp(cmd, "RELOGIO") == 0) {
 
 				} else if (strcmp(cmd, "CONSUMO") == 0) {
-
+					char* s = comando + 14;
+					long long int consumo = strToNum(s);
+					maximoConsumoMensal = (float) consumo;
 				} else {
 
 				}
@@ -1273,6 +1381,27 @@ class Gerente {
 				// Reenviar.
 			}
 
+
+			cout << maximoConsumoMensal << endl;
+			cout << tomada->getPrioridades().madrugada << endl;
+			cout << tomada->getPrioridades().manha << endl;
+			cout << tomada->getPrioridades().tarde << endl;
+			cout << tomada->getPrioridades().noite << endl;
+
+		}
+
+		long long int strToNum(char* str) {
+			long long int num = 0;
+			int cont = 0;
+			int proxNum = (*str-'0');
+			while ((proxNum >= 0) && (proxNum <= 9)) {
+				num *= 10;
+				num += proxNum;
+				str++;
+				proxNum = (*str-'0');
+				cont++;
+			}
+			return num;
 		}
 
 		// Metodo para testes
@@ -1311,6 +1440,13 @@ int main() {
 	t->setPrioridadeManha(5);
 	t->setPrioridadeTarde(5);
 	t->setPrioridadeNoite(5);
+
+	// DEBUG
+	while (true) {
+		g->configuracaoViaUSB();
+	}
+	// /DEBUG
+
 
 	// Aqui é iniciado o sistema.
 	g->iniciar();
