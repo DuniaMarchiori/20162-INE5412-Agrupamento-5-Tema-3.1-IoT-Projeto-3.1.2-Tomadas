@@ -1343,11 +1343,11 @@ class Gerente {
 					}
 					periodo[3] = '\0';
 
-					char valorStr[3];
-					for (int i; i < 3; i++) {
+					char valorStr[5];
+					for (int i; i < 5; i++) {
 						valorStr[i] = comando[i+18];
 					}
-					valorStr[3] = '\0';
+					valorStr[5] = '\0';
 
 					bool valor;
 					if (strcmp(valorStr, "FALSE") == 0) {
@@ -1380,14 +1380,6 @@ class Gerente {
 				// Não interessa pra mim, e reenvio esta habilitado
 				// Reenviar.
 			}
-
-
-			cout << maximoConsumoMensal << endl;
-			cout << tomada->getPrioridades().madrugada << endl;
-			cout << tomada->getPrioridades().manha << endl;
-			cout << tomada->getPrioridades().tarde << endl;
-			cout << tomada->getPrioridades().noite << endl;
-
 		}
 
 		long long int strToNum(char* str) {
