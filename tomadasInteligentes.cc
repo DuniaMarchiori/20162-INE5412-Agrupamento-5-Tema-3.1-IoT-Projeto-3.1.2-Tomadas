@@ -272,26 +272,38 @@ class Relogio {
 		}
 
 		void setData(Data d) {
+			cronometro->reset();
+			cronometro->start();
 			data = d;
 		}
 
 		void setAno(int a) {
+			cronometro->reset();
+			cronometro->start();
 			data.ano = a;
 		}
 
 		void setMes(int m) {
+			cronometro->reset();
+			cronometro->start();
 			data.mes= m;
 		}
 
 		void setDia(int d) {
+			cronometro->reset();
+			cronometro->start();
 			data.dia = d;
 		}
 
 		void setHora(int h) {
+			cronometro->reset();
+			cronometro->start();
 			data.hora = h;
 		}
 
 		void setMinuto(int m) {
+			cronometro->reset();
+			cronometro->start();
 			data.minuto = m;
 		}
 
@@ -1313,8 +1325,6 @@ class Gerente {
 				}
 				cmd[7] = '\0';
 
-				cout << cmd << endl;
-
 				if (strcmp(cmd, "PRIORID") == 0) {
 					char periodo[3];
 					for (int i; i < 3; i++) {
@@ -1366,6 +1376,49 @@ class Gerente {
 						tomada->setPodeDesligar(valor, 3);
 					}
 				} else if (strcmp(cmd, "RELOGIO") == 0) {
+
+					int dia = 0;
+					int mes = 0;
+					int ano = 0;
+					int hora = 0;
+					int minuto = 0;
+
+					char* s = comando + 14;
+					dia = strToNum(s);
+
+					while (*s != ' ') { // Para avançar o ponteiro até o próximo número.
+						s++;
+					}
+					s++;
+
+					mes = strToNum(s);
+
+					while (*s != ' ') {
+						s++;
+					}
+					s++;
+
+					ano = strToNum(s);
+
+					while (*s != ' ') {
+						s++;
+					}
+					s++;
+
+					hora = strToNum(s);
+
+					while (*s != ' ') {
+						s++;
+					}
+					s++;
+
+					minuto = strToNum(s);
+					
+					relogio->setDia(dia);
+					relogio->setMes(mes);
+					relogio->setAno(ano);
+					relogio->setHora(hora);
+					relogio->setMinuto(minuto);
 
 				} else if (strcmp(cmd, "CONSUMO") == 0) {
 					char* s = comando + 14;
