@@ -917,10 +917,10 @@ class Gerente {
 		*/
 		void administrarConsumo() {
 			// Se o consumo até agora somado à previsão de consumo até o fim do mês ficam acima do consumo máximo.
-			if (consumoMensal + consumoTotalPrevisto > maximoConsumoMensal) {
+			if (consumoMensal + consumoTotalPrevisto > maximoConsumoMensal && podeDesligarAtual()) {
 				cout << "  A previsao passa do limite." << endl;
 				mantemConsumoDentroDoLimite(); // Desliga as tomadas necessárias para manter o consumo dentro do limite.
-			} else { // Se o consumo está dentro do limite
+			} else { // Se o consumo está dentro do limite ou se a tomada não pode ser desligada
 				cout << "  A previsao esta dentro do limite. Posso ligar." << endl;
 				// Liga todas as tomadas
 				if (tomada->getTipo() == 2) {
@@ -1168,9 +1168,9 @@ class Gerente {
 			for(auto iter = hash->begin(); iter != hash->end(); iter++) {
 				// Se iter não é vazio: begin() retorna um objeto vazio no inicio por algum motivo
 				if (iter != 0) {
-					if(prioridadeAtual() > iter->object()->prioridade) { // Outras tomadas que têm prioridade abaixo da minha prioridade.
+					if(prioridadeAtual() > iter->object()->prioridade && iter->object()->podeDesligar) { // Outras tomadas que têm prioridade abaixo da minha prioridade e que podem ser desligadas
 						consumoInferiores += iter->object()->consumoPrevisto;
-					} else if (prioridadeAtual() == iter->object()->prioridade) { // Outras tomadas com a mesma prioridade.
+					} else if (prioridadeAtual() == iter->object()->prioridade && iter->object()->podeDesligar) { // Outras tomadas com a mesma prioridade e que podem ser desligadas.
 						outrasComMesmaPrioridade = true;
 						consumoMesmaPioridade += iter->object()->consumoPrevisto;
 						if (consumoProprioPrevisto > iter->object()->consumoPrevisto) { // Tomadas cujo consumo é menor.
@@ -1208,7 +1208,7 @@ class Gerente {
 							tomada->ligar();
 						} else { //Tomada é desligada ou dimerizada
 							cout << "     Mesmo desligando todas as tomadas de mesma prioridade e que consomem menos, o consumo ainda fica acima do maximo, devo desligar." << endl;
-						tomada->desligar();
+							tomada->desligar();
 							if ((diferencaConsumo - menorConsumoMesmaPrioridade - consumoProprioPrevisto)  <= consumoRestante && tomada->getTipo() == 2) {
 								// Se pode dimerizar
 								sobraDeConsumo = consumoRestante - (diferencaConsumo - menorConsumoMesmaPrioridade - consumoProprioPrevisto);
