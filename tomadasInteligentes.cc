@@ -4,7 +4,6 @@
 #include <nic.h>
 #include <utility/hash.h>
 #include <utility/random.h>
-#include <alarm.h>
 #include <chronometer.h>
 #include <usb.h>
 #include <utility/math.h>
@@ -12,8 +11,10 @@
 
 
 #define INTERVALO_ENVIO_MENSAGENS 5 /*!< Intervalo(em minutos) em que são feitos envio e recebimento de mensagens entre as tomadas. */
-#define NUMERO_ENTRADAS_HISTORICO 28 /*!< Quantidade de entradas no histórico. Cada entrada corresponde ao consumo a cada 6 horas. */
+#define NUMERO_ENTRADAS_HISTORICO 28 /*!< Quantidade de entradas no histórico. Cada entrada corresponde ao consumo entre uma sincronização e outra. */
 #define NUMERO_CHAR_CONFIG 40 /*!< Quantidade máxima de caracteres por mensagem. */
+#define MIN_ENTRE_SINC 20 /*!< Tempo entre sincronizações em minutos. */
+#define SEGS_ENTRE_CONSUMO 10 /*!< Intervalo de tempo em segundos entre cada checagem do consumo. */
 
 using namespace EPOS;
 
@@ -41,7 +42,7 @@ struct Dados {
     Address remetente; /*!< Endereço da tomada remetente da mensagem. */
     //bool ligada; /*!< Indica se a tomada remetente está ligada. */
     float consumoPrevisto; /*!< Corresponde ao consumo previsto da tomada até o fim do mês. */
-	float ultimoConsumo; /*!< Corresponde ao valor do consumo da tomada nas últimas 6 horas. */
+	float ultimoConsumo; /*!< Corresponde ao valor do consumo da tomada desde a ultima sincronização. */
     int prioridade; /*!< Corresponde à prioridade da tomada no período de envio da mensagem. */
     char configuracao[NUMERO_CHAR_CONFIG]; /*!< É uma possível configuração que precise ser feita pela tomada. */
 	bool podeDesligar; /*!< Indica se a tomada pode ser desligada no período de envio da mensagem. */
@@ -269,6 +270,47 @@ class Relogio {
 		Data getData() {
 			atualizaRelogio();
 			return data;
+		}
+
+		/*!
+			Método que retorna quantos tempo se passou em microssegundos desde 01/01/2016.
+			\param data data que será convertida para microssegundos.
+			\return Quanto tempo em microssegundos se passou desde 01/01/2016.
+		*/
+		unsigned long long dataEmMicrosec(Data data) {
+			// Valores para "conversão".
+			double micssNumSeg = 1000000;
+			double micssNumMin = 60 * micssNumSeg;
+			double micssNumaHor = 60 * micssNumMin;
+			double micssNumDia = 24 * micssNumaHor;
+
+			// Conversões de unidades dentro de um dia.
+			unsigned long long tempoEmMicrosec = 0;
+			tempoEmMicrosec += data.microssegundos;
+			tempoEmMicrosec += data.segundo * micssNumSeg;
+			tempoEmMicrosec += data.minuto * micssNumMin;
+			tempoEmMicrosec += data.hora * micssNumaHor;
+
+			// Conversões maiores que de um dia.
+			// Dia.
+			tempoEmMicrosec += (data.dia - 1) * micssNumDia;
+
+			// Mês.
+			for (int i = 1; i < data.mes; i++) { // i < data.mes ??
+				tempoEmMicrosec += getDiasNoMes(i, data.ano) * micssNumDia;
+			}
+
+			// Ano.
+			// A contagem começa em 2016.
+			// Para que o valor não seja muito grande.
+			int anoMin = 2016;
+			data.ano -= anoMin;
+			if (data.ano < 0) {
+				data.ano = 0;
+			}
+			tempoEmMicrosec += ((data.ano) * 365 + (data.ano) / 4) * micssNumDia;
+
+			return tempoEmMicrosec;
 		}
 
 		void setData(Data d) {
@@ -626,16 +668,16 @@ class TomadaInteligente: virtual public Tomada {
 			Método que retorna o consumo atual da tomada.
 			\return Valor float que indica o consumo atual da tomada. Caso esteja desligada, o valor retornado é 0.
 		*/
-		virtual float getConsumo() { //mudar o random
+		virtual float getConsumo() {
 
-			// Método criado para possibilitar a simulação da análise de consumo de uma tomada a cada 6 horas.
+			// Método criado para possibilitar a simulação da análise de consumo de uma tomada.
 			// Em um sistema real este método retornaria o consumo da tomada.
 
 			if (ligada) {
 				unsigned int rand;
 				if (consumo == 0) {
 					rand = Random::random();
-					consumo = 200 + (rand % (500-200+1));
+					consumo = 25 + (rand % (425-25+1));
 				}
 				// Aplica uma variação ao último consumo registrado, para simular um sistema real onde os valores são de certa forma consistentes.
 				rand = Random::random();
@@ -685,8 +727,10 @@ class TomadaMulti: public TomadaComDimmer, public TomadaInteligente {
 		*/
 		float getConsumo() {
 
-			// Método criado para possibilitar a simulação da análise de consumo de uma tomada a cada 6 horas.
- 			// Em um sistema real este método retornaria o consumo da tomada.
+			// Método criado para possibilitar a simulação da análise de consumo de uma tomada.
+ 			// Em um  sistema real este metodo não existiria, ja que o consumo recebido ja seria o consumo alterado pela dimerização.
+			// Como estamos simulando o consumo, este metodo existe para simular a dimerizado do consumo da tomada.
+
 			TomadaInteligente::getConsumo();
 			return consumo * dimPorcentagem;
 
@@ -706,38 +750,21 @@ class Previsor {
 		//Previsor();
 
 		/*!
-			Método estático que estima o consumo da tomada para as pŕoximas 6 horas.
+			Método estático que estima o consumo da tomada até a próxima sincronização.
  			\param historico é um vetor que contém os consumos da tomada.
 		*/
-		static float preverConsumoProprio(float historico[NUMERO_ENTRADAS_HISTORICO]) { //28 entradas corresponde a 7 dias(uma entrada a cada 6 horas)
-            float previsao =   (1/406.0) * historico[0]
-							+  (2/406.0) * historico[1]
-							+  (3/406.0) * historico[2]
-							+  (4/406.0) * historico[3]
-							+  (5/406.0) * historico[4]
-							+  (6/406.0) * historico[5]
-							+  (7/406.0) * historico[6]
-							+  (8/406.0) * historico[7]
-							+  (9/406.0) * historico[8]
-							+ (10/406.0) * historico[9]
-							+ (11/406.0) * historico[10]
-							+ (12/406.0) * historico[11]
-							+ (13/406.0) * historico[10]
-							+ (14/406.0) * historico[13]
-							+ (15/406.0) * historico[14]
-							+ (16/406.0) * historico[15]
-							+ (17/406.0) * historico[16]
-							+ (18/406.0) * historico[17]
-							+ (19/406.0) * historico[18]
-							+ (20/406.0) * historico[19]
-							+ (21/406.0) * historico[20]
-							+ (22/406.0) * historico[21]
-							+ (23/406.0) * historico[22]
-							+ (24/406.0) * historico[23]
-							+ (25/406.0) * historico[24]
-							+ (26/406.0) * historico[25]
-							+ (27/406.0) * historico[26]
-							+ (28/406.0) * historico[27];
+		static float preverConsumoProprio(float historico[NUMERO_ENTRADAS_HISTORICO]) {
+			float previsao = 0;
+
+			int N = NUMERO_ENTRADAS_HISTORICO;
+
+			// Soma de todos os números de 1 até N.
+			double somaPesos = (N * (N + 1)) / 2;
+
+			for (int i = 0; i < NUMERO_ENTRADAS_HISTORICO; i++) {
+				previsao += ((i+1)/somaPesos) * historico[i];
+			}
+
         	return previsao;
     	}
 
@@ -774,28 +801,27 @@ class Gerente {
 		float consumoMensal; /*!< Variável que indica o consumo mensal das tomadas até o momento.*/
 		float consumoProprioPrevisto; /*!< Variável que indica o consumo previsto da tomada no mês.*/
 		float consumoTotalPrevisto; /*!< Variável que indica o consumo total previsto no mês.*/
-		float *historico; /*!< Vetor que guarda o consumo da tomada a cada 6 horas.*/
-		int quantidade6Horas; /*!< Variável que indica a quantidade de quartos de dia(6 horas) que faltam para o fim do mês.*/
+		float *historico; /*!< Vetor que guarda o consumo da tomada nos ultimos periodos entre as sincronizações.*/
+		int quantidadeDeSincs; /*!< Variável que indica a quantidade de sincronizações que faltam para o fim do mês.*/
 		float consumoProprio; /*!< Variável que indica o consumo da tomada no último período.*/
 
 
 		/*!
 			Método que realiza o trabalho da placa, fazendo sua previsão, sincronização e ajustes no estado da tomada conforme o necessário.
-			\sa calculaQuantidadeQuartosDeDia(), atualizaHistorico(), fazerPrevisaoConsumoProprio(), preparaEnvio(), sincronizar(),
- 				atualizaConsumoMensal(), fazerPrevisaoConsumoTotal(), administrarConsumo()
+			\sa calculaQuantidadeDeSincs(), atualizaHistorico(), fazerPrevisaoConsumoProprio(), preparaEnvio(), sincronizar(), atualizaConsumoMensal(), fazerPrevisaoConsumoTotal(), administrarConsumo()
 		*/
 		void administrar() {
 
 			// Entrando em um novo mês
-			if (quantidade6Horas == 0) {
+			if (quantidadeDeSincs == 0) {
 				consumoMensal = 0;
-				calculaQuantidadeQuartosDeDia();
+				calculaQuantidadeDeSincs();
 			}
 
 			cout << "- Previsao." << endl;
 			// Preparando a previsao própria.
 			float ultimoConsumo = consumoProprio;
-			cout << "  Consumo efetivo das ultimas 6h: " << ultimoConsumo << endl;
+			cout << "  Consumo efetivo do ultimo periodo: " << ultimoConsumo << endl;
 			atualizaHistorico(ultimoConsumo);
 			fazerPrevisaoConsumoProprio();
 			cout << "  Previsao propria ate o fim do mes: " << consumoProprioPrevisto << endl;
@@ -826,7 +852,7 @@ class Gerente {
 			administrarConsumo();
 
 			// Atualiza a variável de controle que indica quantas verificações ainda serão feitas dentro desse mês.
-			quantidade6Horas--;
+			quantidadeDeSincs--;
 			consumoProprio = 0;
 		}
 
@@ -898,11 +924,9 @@ class Gerente {
 				cout << "  A previsao esta dentro do limite. Posso ligar." << endl;
 				// Liga todas as tomadas
 				if (tomada->getTipo() == 2) {
-					tomada->ligar();
 					static_cast<TomadaMulti*>(tomada)->setDimerizacao(1);
-				} else {
-					tomada->ligar();
 				}
+				tomada->ligar();
 			}
 		}
 
@@ -982,7 +1006,7 @@ class Gerente {
 		/*!
 			Método construtor da classe.
  			\param t é a tomada a ser controlada.
- 			\sa inicializarHistorico(), calculaQuantidadeQuartosDeDia()
+ 			\sa inicializarHistorico(), calculaQuantidadeDeSincs()
 		*/
 		Gerente(TomadaInteligente* t) {
 			tomada = t;
@@ -990,7 +1014,7 @@ class Gerente {
 			mensageiro = new Mensageiro();
 			hash = new Tabela();
 
-			maximoConsumoMensal = 1000; //consumo máximo padrão
+			maximoConsumoMensal = 72000000; //consumo máximo padrão
 
 			consumoMensal = 0;
 			consumoProprio = 0;
@@ -1000,7 +1024,7 @@ class Gerente {
 			historico = new float[NUMERO_ENTRADAS_HISTORICO];
 			inicializarHistorico();
 
-			calculaQuantidadeQuartosDeDia();
+			calculaQuantidadeDeSincs();
 		}
 
 		/*!
@@ -1031,9 +1055,9 @@ class Gerente {
 			\sa Previsor
 		*/
 		void fazerPrevisaoConsumoProprio() {
-			/*Cada previsão é para as próximas 6 horas. Assim, esse valor é multiplicado por quantas mais 6 horas faltam para acabar o mês para depois sabermos se o consumo está dentro do limite.*/
+			/* Cada previsão a previsão até o próxima sincronização. Assim, esse valor é multiplicado por quantas sincronizações faltam para acabar o mês para depois sabermos se o consumo está dentro do limite.*/
 			float retorno = Previsor::preverConsumoProprio(historico);
-			consumoProprioPrevisto = retorno * quantidade6Horas;
+			consumoProprioPrevisto = retorno * quantidadeDeSincs;
 		}
 
 		/*!
@@ -1044,37 +1068,49 @@ class Gerente {
 		}
 
 		/*!
-			Método que realiza a sincronização entre as tomadas a cada 6 horas.
+			Método que realiza a sincronização entre as tomadas e a sua administração.
 			\sa administrar(), pausa()
 		*/
-		void iniciar() { //menos tempo entre as sincronizações
+		void iniciar() {
+
 			Chronometer* cronPrincipal = new Chronometer();
+
 			Data data = relogio->getData();
+			long long tempoEntreSincs = MIN_ENTRE_SINC * 60 * 1000000.0;
+			long long tempoEntreConsumos = SEGS_ENTRE_CONSUMO * 1000000.0;
 
-			// Tempo que passou desde o último quarto de dia
-			long long tempoQuePassou = ((data.hora*60*60 + data.minuto*60 + data.segundo) % (6*60*60)) * 1000000;
-			long long timeTillNextWake;
-			long long milisecsEm6Horas = 6*60*60*1000000.0;
+			long long tempoDecorrido;
 
-			cout << "Iniciando Sistema" << endl << endl;
+			long long tempoDecorridoEntreSinc = tempoEntreSincs - ((long long) (data.minuto*60*1000000.0 + data.segundo*1000000.0 + data.microssegundos) % tempoEntreSincs);
+
+			long long tempoDecorridoEntreCons = tempoEntreConsumos - ((long long) (data.segundo*1000000.0 + data.microssegundos) % tempoEntreConsumos);
 
 			while (true) {
-				timeTillNextWake = milisecsEm6Horas - tempoQuePassou;
-
-				cout << "Pausa entre sincronizacoes." << endl << endl;
-
-				pausa(timeTillNextWake);
-
-				cout << "Acordando." << endl;
-
 				cronPrincipal->reset();
 				cronPrincipal->start();
 
-				administrar();
+				if (tempoDecorridoEntreSinc > tempoEntreSincs) { // Sincronizar e Administrar.
+					cout << "Iniciando administracao." << endl;
+					administrar();
 
-				cronPrincipal->stop();
-				tempoQuePassou = cronPrincipal->read();
+					tempoDecorridoEntreSinc = 0;
+					tempoDecorridoEntreCons = 0;
 
+				} else if (tempoDecorridoEntreCons > tempoEntreConsumos) { // Incrementa o consumo.
+					cout << "Obtendo consumo." << endl;
+					consumoProprio += tomada->getConsumo();
+
+					tempoDecorridoEntreCons = 0;
+
+				} else { // Verifica mensagens de configuração.
+					configuracaoViaUSB();
+					configuracaoViaNIC();
+
+				}
+
+				tempoDecorrido = cronPrincipal->read();
+				tempoDecorridoEntreSinc += tempoDecorrido;
+				tempoDecorridoEntreCons += tempoDecorrido;
 			}
 		}
 
@@ -1151,11 +1187,9 @@ class Gerente {
 				// Liga a tomada.
 				if (tomada->getTipo() == 2) {
 					cout << "    Dimerizo para 100%." << endl;
-					tomada->ligar();
 					static_cast<TomadaMulti*>(tomada)->setDimerizacao(1);
-				} else {
-					tomada->ligar();
 				}
+				tomada->ligar();
 			} else { // Se mesmo desligando as tomadas com prioridade inferior o consumo ainda está abaixo do limite
 				cout << "   Desligando as tomadas de prioridade inferior o consumo ainda fica acima do maximo. Sou uma candidata a ser desligada." << endl;
 				if (outrasComMesmaPrioridade) { // Se há tomadas com a mesma prioridade.
@@ -1169,11 +1203,9 @@ class Gerente {
 							// Essa tomada pode ser ligada
 							if (tomada->getTipo() == 2) {
 								cout << "      Dimerizo para 100%." << endl;
-								tomada->ligar();
 								static_cast<TomadaMulti*>(tomada)->setDimerizacao(1);
-							} else {
-								tomada->ligar();
 							}
+							tomada->ligar();
 						} else { //Tomada é desligada ou dimerizada
 							cout << "     Mesmo desligando todas as tomadas de mesma prioridade e que consomem menos, o consumo ainda fica acima do maximo, devo desligar." << endl;
 						tomada->desligar();
@@ -1210,16 +1242,17 @@ class Gerente {
 		}
 
 		/*!
-			Método que calcula quantos 1/4 de dia faltam para o fim do mês. O valor é armazenado na variável global quantidade6Horas.
+			Método que calcula quantos 1/4 de dia faltam para o fim do mês. O valor é armazenado na variável global quantidadeDeSincs.
 			\sa diasRestantes()
 		*/
-		void calculaQuantidadeQuartosDeDia() {
-			// +1 para contar o dia de hoje e podermos subtrair os quartos que já passaram.
-			quantidade6Horas = (diasRestantes()+1) * 4;
-			int hora = relogio->getData().hora;
-			// Ajusta da quantidade para quando a tomada é criada depois do primeiro 1/4 do dia.
-			int quartoDoDia = (int) hora / 6;
-			quantidade6Horas = quantidade6Horas - quartoDoDia;
+		void calculaQuantidadeDeSincs() {
+			Data data = relogio->getData();
+
+			// Obtem o número de sincronizações restantes até o fim do mês, contando que o dia de hoje já acabou.
+			quantidadeDeSincs = diasRestantes() * ((24 * 60) / MIN_ENTRE_SINC);
+
+			// Obtem o número de sincronizações que já ocorreram hoje para subtrair do valor anterior.
+			quantidadeDeSincs -= (int) ((data.hora*60 + data.minuto) / MIN_ENTRE_SINC);
 		}
 
 		/*!
@@ -1238,13 +1271,15 @@ class Gerente {
  			\param microssegundos é o tempo em microssegundos que se deseja esperar até a próxima sincronização.
 		*/
 		void pausa(long long microssegundos){
-			while (microssegundos > 0) {
-				RTC::Microsecond timeSlept = (RTC::Microsecond) microssegundos;
-				Alarm::delay(timeSlept);
-				relogio->atualizaRelogio();
-				microssegundos -= timeSlept;
+			Data data = relogio->getData();
+			unsigned long long tempoAtual = relogio->dataEmMicrosec(data);
+			unsigned long long tempoFim = tempoAtual + microssegundos;
+
+			while (tempoAtual < tempoFim) {
+				data = relogio->getData();
+				tempoAtual = relogio->dataEmMicrosec(data);
 			}
-			// consumoProprio soma getConsumo
+
 		}
 
 		/*!
@@ -1254,6 +1289,7 @@ class Gerente {
 			if (temMsgUSB()) {
 				char strReceived[NUMERO_CHAR_CONFIG];
 				receberConfigViaUSB(strReceived);
+				// Reenvio é true pois mensagens recebidas por USB ainda não foram reenviadas.
 				processarComando(strReceived, true);
 			}
 		}
@@ -1290,8 +1326,27 @@ class Gerente {
 		}
 
 		/*!
+			Método que trata de alterações na configuração da tomada através de mensagens recebidas via NIC.
+		*/
+		void configuracaoViaNIC() {
+			// Recebe mensagem.
+			Dados* dadosRecebidos = receberMensagem();
+
+			// Verifica se realmente é uma mensagem.
+			if (dadosRecebidos->configuracao[0] != '\0') {
+
+				// Processa comando.
+				// Reenvio é false pois mensagens recebidas por NIC ja são reenvio.
+				processarComando(dadosRecebidos->configuracao, false);
+			}
+
+			delete dadosRecebidos;
+		}
+
+		/*!
 			Método que executa os comandos de configuração.
 			\param comando é o comando que será executado.
+			\param reenviar é um booleano que define se a mensagem deve ser reenviada em caso de o destinatário ser diferente da tomada que recebeu a configuração.
 		*/
 		void processarComando(char* comando, bool reenviar) {
 
@@ -1413,7 +1468,7 @@ class Gerente {
 					s++;
 
 					minuto = strToNum(s);
-					
+
 					relogio->setDia(dia);
 					relogio->setMes(mes);
 					relogio->setAno(ano);
@@ -1429,12 +1484,24 @@ class Gerente {
 				}
 			}
 
+			//	Se a mensagem deve ser reenviada e o destinatário é todo mundo ou uma outra tomada específica.
 			if (reenviar && (todos || !souAlvo)) {
-				// Não interessa pra mim, e reenvio esta habilitado
-				// Reenviar.
+				Dados dadosEnviar;
+
+				for (int i; i < NUMERO_CHAR_CONFIG; i++) {
+					dadosEnviar.configuracao[i] = comando[i];
+				}
+				dadosEnviar.configuracao[NUMERO_CHAR_CONFIG] = '\0';
+
+				enviarMensagemBroadcast(dadosEnviar);
 			}
 		}
-
+		
+		/*!
+			Método que converte um número em uma string para um número.
+			\param str é o ponteiro para o primeiro caractér da string que contém o numero.
+			\return O número convertido para long long int.
+		*/
 		long long int strToNum(char* str) {
 			long long int num = 0;
 			int cont = 0;
@@ -1449,7 +1516,9 @@ class Gerente {
 			return num;
 		}
 
-		// Metodo para testes
+		/*!
+			Método criado apenas para que a tomada imprima os dados contídos em seu banco de dados.
+		*/
 		void printHash() {
 			for(auto iter = hash->begin(); iter != hash->end(); iter++) {
 				if (iter != 0) {
