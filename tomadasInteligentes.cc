@@ -8,13 +8,14 @@
 #include <usb.h>
 #include <utility/math.h>
 #include <utility/string.h>
+#include <alarm.h>
 
-
-#define INTERVALO_ENVIO_MENSAGENS 5 /*!< Intervalo(em minutos) em que são feitos envio e recebimento de mensagens entre as tomadas. */
 #define NUMERO_ENTRADAS_HISTORICO 28 /*!< Quantidade de entradas no histórico. Cada entrada corresponde ao consumo entre uma sincronização e outra. */
 #define NUMERO_CHAR_CONFIG 40 /*!< Quantidade máxima de caracteres por mensagem. */
+
 #define MIN_ENTRE_SINC 20 /*!< Tempo entre sincronizações em minutos. */
 #define SEGS_ENTRE_CONSUMO 10 /*!< Intervalo de tempo em segundos entre cada checagem do consumo. */
+#define INTERVALO_ENVIO_MENSAGENS 1 /*!< Intervalo (em minutos) em as tomadas trocam mensagens para garantir sua sincronização. */
 
 using namespace EPOS;
 
@@ -279,10 +280,10 @@ class Relogio {
 		*/
 		unsigned long long dataEmMicrosec(Data data) {
 			// Valores para "conversão".
-			double micssNumSeg = 1000000;
-			double micssNumMin = 60 * micssNumSeg;
-			double micssNumaHor = 60 * micssNumMin;
-			double micssNumDia = 24 * micssNumaHor;
+			float micssNumSeg = 1000000;
+			float micssNumMin = 60 * micssNumSeg;
+			float micssNumaHor = 60 * micssNumMin;
+			float micssNumDia = 24 * micssNumaHor;
 
 			// Conversões de unidades dentro de um dia.
 			unsigned long long tempoEmMicrosec = 0;
@@ -314,39 +315,45 @@ class Relogio {
 		}
 
 		void setData(Data d) {
+			data = d;
 			cronometro->reset();
 			cronometro->start();
-			data = d;
 		}
 
 		void setAno(int a) {
+			data.ano = a;
 			cronometro->reset();
 			cronometro->start();
-			data.ano = a;
 		}
 
 		void setMes(int m) {
+			data.mes= m;
 			cronometro->reset();
 			cronometro->start();
-			data.mes= m;
 		}
 
 		void setDia(int d) {
+			data.dia = d;
 			cronometro->reset();
 			cronometro->start();
-			data.dia = d;
 		}
 
 		void setHora(int h) {
+			data.hora = h;
 			cronometro->reset();
 			cronometro->start();
-			data.hora = h;
 		}
 
 		void setMinuto(int m) {
+			data.minuto = m;
 			cronometro->reset();
 			cronometro->start();
-			data.minuto = m;
+		}
+
+		void setSegundo(int s) {
+			data.segundo = s;
+			cronometro->reset();
+			cronometro->start();
 		}
 
 		/*!
@@ -505,8 +512,8 @@ class Tomada {
 			Método construtor da classe
 		*/
 		Tomada() {
-			ligada = true;
 			led  = new Led();
+			ligar();
 		}
 
 		/*!
@@ -759,7 +766,7 @@ class Previsor {
 			int N = NUMERO_ENTRADAS_HISTORICO;
 
 			// Soma de todos os números de 1 até N.
-			double somaPesos = (N * (N + 1)) / 2;
+			float somaPesos = (N * (N + 1)) / 2;
 
 			for (int i = 0; i < NUMERO_ENTRADAS_HISTORICO; i++) {
 				previsao += ((i+1)/somaPesos) * historico[i];
@@ -824,7 +831,8 @@ class Gerente {
 			cout << "  Consumo efetivo do ultimo periodo: " << ultimoConsumo << endl;
 			atualizaHistorico(ultimoConsumo);
 			fazerPrevisaoConsumoProprio();
-			cout << "  Previsao propria ate o fim do mes: " << consumoProprioPrevisto << endl;
+
+			cout << "  Previsao propria ate o fim do mes: " << (long long int) consumoProprioPrevisto << endl;
 
 			cout << "- Prepadando dados para enviar." << endl;
 			// Preparando Dados para enviar.
@@ -839,15 +847,19 @@ class Gerente {
 			cout << "- Dados obtidos:" << endl;
 			printHash();
 
+			cout << "- Dados proprios:" << endl;
+			cout << "   Placa " << mensageiro->obterEnderecoNIC() << ":" << endl;
+			cout << "    Consumo previsto: .. " << (long long int) consumoProprioPrevisto << endl;
+			cout << "    Ultimo consumo: .... " << ultimoConsumo << endl;
+			cout << "    Prioridade: ........ " << dadosEnviar.prioridade << endl;
+
 			cout << "- Tomada de decisao:" << endl;
 			// Atualiza as previsões com base nos novos dados recebidos.
 			atualizaConsumoMensal();
 			fazerPrevisaoConsumoTotal(); // Considera todas as tomadas, mesmo as desligadas.
-			cout << "  Consumo efetivo deste mes ate o momento: ............. " << consumoMensal << endl;
-			cout << "  Consumo maximo permitido ate o final do mes: ......... " << maximoConsumoMensal << endl;
-			cout << "  Consumo total previsto do sistema ate o fim do mes: .. " << (consumoTotalPrevisto+consumoMensal) << endl;
-			cout << "  Prioridade atual: .................................... " << dadosEnviar.prioridade << endl;
-
+			cout << "  Consumo total deste mes ate o momento: ............... " << (long long int) consumoMensal << endl;
+			cout << "  Consumo maximo permitido ate o final do mes: ......... " << (long long int) maximoConsumoMensal << endl;
+			cout << "  Consumo total previsto do sistema ate o fim do mes: .. " << (long long int) (consumoTotalPrevisto+consumoMensal) << endl;
 			// Toma decisões dependendo de como está o consumo do sistema.
 			administrarConsumo();
 
@@ -917,7 +929,7 @@ class Gerente {
 		*/
 		void administrarConsumo() {
 			// Se o consumo até agora somado à previsão de consumo até o fim do mês ficam acima do consumo máximo.
-			if (consumoMensal + consumoTotalPrevisto > maximoConsumoMensal && podeDesligarAtual()) {
+			if ((consumoMensal + consumoTotalPrevisto > maximoConsumoMensal) && podeDesligarAtual()) {
 				cout << "  A previsao passa do limite." << endl;
 				mantemConsumoDentroDoLimite(); // Desliga as tomadas necessárias para manter o consumo dentro do limite.
 			} else { // Se o consumo está dentro do limite ou se a tomada não pode ser desligada
@@ -953,21 +965,21 @@ class Gerente {
 			Hash_Element* foundElement = hash->search_key(e->object()->remetente);
 			if (foundElement != 0) {  // Se uma entrada para a tomada passada já existe
 
-				/*
 				Dados* d =  foundElement->object();
 				//d->ligada = e->object()->ligada;
 				d->consumoPrevisto = e->object()->consumoPrevisto;
 				d->ultimoConsumo = e->object()->ultimoConsumo;
 				d->prioridade = e->object()->prioridade;
-				d->configuracao = e->object()->configuracao;
+
+				for (int i; i < NUMERO_CHAR_CONFIG; i++) {
+					d->configuracao[i] = e->object()->configuracao[i];
+				}
+				d->configuracao[NUMERO_CHAR_CONFIG] = '\0';
+
 				d->podeDesligar = e->object()->podeDesligar;
 				delete e->object();
 				delete e;
-				*/
 
-				delete foundElement->object();
-				delete foundElement;
-				hash->insert(e);
 			} else if (e->object()->prioridade != -1) {
 				// Se elemento não está na hash e não é um elemento "vazio"(prioridade é igual a -1 quando não há mensagem recebida)
 				hash->insert(e);
@@ -1014,7 +1026,7 @@ class Gerente {
 			mensageiro = new Mensageiro();
 			hash = new Tabela();
 
-			maximoConsumoMensal = 72000000; //consumo máximo padrão
+			maximoConsumoMensal = 12000000; //consumo máximo padrão
 
 			consumoMensal = 0;
 			consumoProprio = 0;
@@ -1073,44 +1085,45 @@ class Gerente {
 		*/
 		void iniciar() {
 
-			Chronometer* cronPrincipal = new Chronometer();
-
-			Data data = relogio->getData();
 			long long tempoEntreSincs = MIN_ENTRE_SINC * 60 * 1000000.0;
 			long long tempoEntreConsumos = SEGS_ENTRE_CONSUMO * 1000000.0;
 
-			long long tempoDecorrido;
+			Data data;
+			long long tempoDecorridoEntreSinc;
+			long long tempoDecorridoEntreCons;
 
-			long long tempoDecorridoEntreSinc = tempoEntreSincs - ((long long) (data.minuto*60*1000000.0 + data.segundo*1000000.0 + data.microssegundos) % tempoEntreSincs);
+			// Variáveis para verificar se houve a transição no módulo do calculo do tempoDecorridoEntreSinc e do tempoDecorridoEntreCons.
+			long long ultimoTDES;
+			long long ultimoTDEC;
 
-			long long tempoDecorridoEntreCons = tempoEntreConsumos - ((long long) (data.segundo*1000000.0 + data.microssegundos) % tempoEntreConsumos);
+			int intervaloConfig = 10000;
 
 			while (true) {
-				cronPrincipal->reset();
-				cronPrincipal->start();
+				data = relogio->getData();
+				tempoDecorridoEntreSinc =  ((long long) (data.minuto*60*1000000.0 + data.segundo*1000000.0 + data.microssegundos)) % tempoEntreSincs;
+				tempoDecorridoEntreCons = ((long long) (data.segundo*1000000.0 + data.microssegundos)) % tempoEntreConsumos;
 
-				if (tempoDecorridoEntreSinc > tempoEntreSincs) { // Sincronizar e Administrar.
-					cout << "Iniciando administracao." << endl;
-					administrar();
-
-					tempoDecorridoEntreSinc = 0;
-					tempoDecorridoEntreCons = 0;
-
-				} else if (tempoDecorridoEntreCons > tempoEntreConsumos) { // Incrementa o consumo.
-					cout << "Obtendo consumo." << endl;
+				// Incrementa o consumo.
+				if (tempoDecorridoEntreCons < ultimoTDEC) {
 					consumoProprio += tomada->getConsumo();
-
-					tempoDecorridoEntreCons = 0;
-
-				} else { // Verifica mensagens de configuração.
-					configuracaoViaUSB();
-					configuracaoViaNIC();
-
 				}
 
-				tempoDecorrido = cronPrincipal->read();
-				tempoDecorridoEntreSinc += tempoDecorrido;
-				tempoDecorridoEntreCons += tempoDecorrido;
+				if (tempoDecorridoEntreSinc < ultimoTDES) { // Sincronizar e Administrar.
+					administrar();
+				}
+
+				// Verifica mensagens de configuração.
+				int comandoExecutadoUSB = configuracaoViaUSB();
+				int comandoExecutadoNIC = configuracaoViaNIC();
+
+				// Se o comando executado foi um comando que altera o relógio devemos ignorar os ultimos "tempos decorridos" antes dessa alteração.
+				if ((comandoExecutadoUSB == 3) || (comandoExecutadoNIC == 3)) {
+					ultimoTDES = 0;
+					ultimoTDEC = 0;
+				} else {
+					ultimoTDES = tempoDecorridoEntreSinc;
+					ultimoTDEC = tempoDecorridoEntreCons;
+				}
 			}
 		}
 
@@ -1168,9 +1181,9 @@ class Gerente {
 			for(auto iter = hash->begin(); iter != hash->end(); iter++) {
 				// Se iter não é vazio: begin() retorna um objeto vazio no inicio por algum motivo
 				if (iter != 0) {
-					if(prioridadeAtual() > iter->object()->prioridade && iter->object()->podeDesligar) { // Outras tomadas que têm prioridade abaixo da minha prioridade e que podem ser desligadas
+					if((prioridadeAtual() > iter->object()->prioridade) && iter->object()->podeDesligar) { // Outras tomadas que têm prioridade abaixo da minha prioridade e que podem ser desligadas
 						consumoInferiores += iter->object()->consumoPrevisto;
-					} else if (prioridadeAtual() == iter->object()->prioridade && iter->object()->podeDesligar) { // Outras tomadas com a mesma prioridade e que podem ser desligadas.
+					} else if ((prioridadeAtual() == iter->object()->prioridade) && iter->object()->podeDesligar) { // Outras tomadas com a mesma prioridade e que podem ser desligadas.
 						outrasComMesmaPrioridade = true;
 						consumoMesmaPioridade += iter->object()->consumoPrevisto;
 						if (consumoProprioPrevisto > iter->object()->consumoPrevisto) { // Tomadas cujo consumo é menor.
@@ -1284,14 +1297,17 @@ class Gerente {
 
 		/*!
 			Método que trata de alterações na configuração da tomada através de mensagens USB.
+			\return retorna um inteiro que representa qual comando foi executado.
 		*/
-		void configuracaoViaUSB() {
+		int configuracaoViaUSB() {
+			int comandoExecutado;
 			if (temMsgUSB()) {
 				char strReceived[NUMERO_CHAR_CONFIG];
 				receberConfigViaUSB(strReceived);
 				// Reenvio é true pois mensagens recebidas por USB ainda não foram reenviadas.
-				processarComando(strReceived, true);
+				comandoExecutado = processarComando(strReceived, true);
 			}
+			return comandoExecutado;
 		}
 
 		/*!
@@ -1327,28 +1343,34 @@ class Gerente {
 
 		/*!
 			Método que trata de alterações na configuração da tomada através de mensagens recebidas via NIC.
+			\return retorna um inteiro que representa qual comando foi executado.
 		*/
-		void configuracaoViaNIC() {
+		int configuracaoViaNIC() {
+			int comandoExecutado = 0;
 			// Recebe mensagem.
 			Dados* dadosRecebidos = receberMensagem();
-
+			
 			// Verifica se realmente é uma mensagem.
 			if (dadosRecebidos->configuracao[0] != '\0') {
 
 				// Processa comando.
 				// Reenvio é false pois mensagens recebidas por NIC ja são reenvio.
-				processarComando(dadosRecebidos->configuracao, false);
+				comandoExecutado = processarComando(dadosRecebidos->configuracao, false);
 			}
 
 			delete dadosRecebidos;
+			return comandoExecutado;
 		}
 
 		/*!
 			Método que executa os comandos de configuração.
 			\param comando é o comando que será executado.
 			\param reenviar é um booleano que define se a mensagem deve ser reenviada em caso de o destinatário ser diferente da tomada que recebeu a configuração.
+			\return retorna um inteiro que representa qual comando foi executado.
 		*/
-		void processarComando(char* comando, bool reenviar) {
+		int processarComando(char* comando, bool reenviar) {
+
+			int comandoExecutado = 0;
 
 			bool todos = false;
 			bool souAlvo = false;
@@ -1401,6 +1423,8 @@ class Gerente {
 						}
 					}
 
+					cout << "Prioridade alterada." << endl;
+					comandoExecutado = 1;
 				} else if (strcmp(cmd, "DESLIGA") == 0) {
 					char periodo[3];
 					for (int i; i < 3; i++) {
@@ -1430,6 +1454,9 @@ class Gerente {
 					} else if (strcmp(periodo, "NOI") == 0) {
 						tomada->setPodeDesligar(valor, 3);
 					}
+
+					cout << "Permissao para desligar alterada." << endl;
+					comandoExecutado = 2;
 				} else if (strcmp(cmd, "RELOGIO") == 0) {
 
 					int dia = 0;
@@ -1469,34 +1496,53 @@ class Gerente {
 
 					minuto = strToNum(s);
 
-					relogio->setDia(dia);
-					relogio->setMes(mes);
-					relogio->setAno(ano);
-					relogio->setHora(hora);
-					relogio->setMinuto(minuto);
+					Data novaData;
+					novaData.dia = dia;
+					novaData.mes = mes;
+					novaData.ano = ano;
+					novaData.hora = hora;
+					novaData.minuto = minuto;
+					novaData.segundo = 0;
+					novaData.microssegundos = 0;
 
+					relogio->setData(novaData);
+
+					cout << "Relogio alterado" << endl;
+					comandoExecutado = 3;
 				} else if (strcmp(cmd, "CONSUMO") == 0) {
 					char* s = comando + 14;
 					long long int consumo = strToNum(s);
 					maximoConsumoMensal = (float) consumo;
+					cout << "Consumo maximo alterado" << endl;
+					comandoExecutado = 4;
 				} else {
-
+					cout << "Comando invalido" << endl;
+					comandoExecutado = -1;
 				}
+
 			}
 
 			//	Se a mensagem deve ser reenviada e o destinatário é todo mundo ou uma outra tomada específica.
 			if (reenviar && (todos || !souAlvo)) {
 				Dados dadosEnviar;
 
-				for (int i; i < NUMERO_CHAR_CONFIG; i++) {
+				dadosEnviar.remetente = mensageiro->obterEnderecoNIC();
+				dadosEnviar.consumoPrevisto = -1;
+				dadosEnviar.ultimoConsumo = -1;
+				dadosEnviar.prioridade = -1;
+				dadosEnviar.podeDesligar = -1;
+
+				for (int i = 0; i < NUMERO_CHAR_CONFIG; i++) {
 					dadosEnviar.configuracao[i] = comando[i];
 				}
 				dadosEnviar.configuracao[NUMERO_CHAR_CONFIG] = '\0';
-
+				
 				enviarMensagemBroadcast(dadosEnviar);
 			}
+			
+			return comandoExecutado;
 		}
-		
+
 		/*!
 			Método que converte um número em uma string para um número.
 			\param str é o ponteiro para o primeiro caractér da string que contém o numero.
@@ -1524,7 +1570,7 @@ class Gerente {
 				if (iter != 0) {
 					Dados* d = iter->object();
 					cout << "   Placa " << d->remetente << ":" << endl;
-					cout << "    Consumo previsto: .. " << d->consumoPrevisto << endl;
+					cout << "    Consumo previsto: .. " << (long long int ) d->consumoPrevisto << endl;
 					cout << "    Ultimo consumo: .... " << d->ultimoConsumo << endl;
 					cout << "    Prioridade: ........ " << d->prioridade << endl;
 				}
@@ -1539,32 +1585,16 @@ class Gerente {
 */
 int main() {
 
-	// Para instanciar uma tomada inteligente com dimmer, utilize TomadaMulti ao invés de TomadaInteligente.
+	Alarm::delay(2*1000000);
+
 	TomadaInteligente* t = new TomadaInteligente();
-
-	// Aqui instanciamos o Relógio que permite capturar a passagem do tempo.
-	// Ele será inicializado no horário que for passado à ele no construtor.
-	// Seus parâmetros são o ano, o mês, o dia, a hora e o minuto, respectivamente.
-	//Relogio* r = new Relogio(2016,10,1,05,59);
-	//Gerente* g = new Gerente(20000, t, r);
 	Gerente* g = new Gerente(t);
+	t->setPrioridadeMadrugada(1);
+	t->setPrioridadeManha(2);
+	t->setPrioridadeTarde(3);
+	t->setPrioridadeNoite(4);
 
-	// Estes métodos definem as prioridades da tomada ao longo do dia.
-	t->setPrioridadeMadrugada(5);
-	t->setPrioridadeManha(5);
-	t->setPrioridadeTarde(5);
-	t->setPrioridadeNoite(5);
-
-	// DEBUG
-	while (true) {
-		g->configuracaoViaUSB();
-	}
-	// /DEBUG
-
-
-	// Aqui é iniciado o sistema.
 	g->iniciar();
-
 
 	while (true);
 };
