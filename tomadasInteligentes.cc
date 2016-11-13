@@ -15,7 +15,7 @@
 
 #define MIN_ENTRE_SINC 20 /*!< Tempo entre sincronizações em minutos. */
 #define SEGS_ENTRE_CONSUMO 10 /*!< Intervalo de tempo em segundos entre cada checagem do consumo. */
-#define INTERVALO_ENVIO_MENSAGENS 1 /*!< Intervalo (em minutos) em as tomadas trocam mensagens para garantir sua sincronização. */
+#define INTERVALO_ENVIO_MENSAGENS 1 /*!< Intervalo (em minutos) em que as tomadas trocam mensagens para garantir sua sincronização. */
 
 using namespace EPOS;
 
@@ -1096,8 +1096,6 @@ class Gerente {
 			long long ultimoTDES;
 			long long ultimoTDEC;
 
-			int intervaloConfig = 10000;
-
 			while (true) {
 				data = relogio->getData();
 				tempoDecorridoEntreSinc =  ((long long) (data.minuto*60*1000000.0 + data.segundo*1000000.0 + data.microssegundos)) % tempoEntreSincs;
@@ -1349,7 +1347,7 @@ class Gerente {
 			int comandoExecutado = 0;
 			// Recebe mensagem.
 			Dados* dadosRecebidos = receberMensagem();
-			
+
 			// Verifica se realmente é uma mensagem.
 			if (dadosRecebidos->configuracao[0] != '\0') {
 
@@ -1536,10 +1534,10 @@ class Gerente {
 					dadosEnviar.configuracao[i] = comando[i];
 				}
 				dadosEnviar.configuracao[NUMERO_CHAR_CONFIG] = '\0';
-				
+
 				enviarMensagemBroadcast(dadosEnviar);
 			}
-			
+
 			return comandoExecutado;
 		}
 
