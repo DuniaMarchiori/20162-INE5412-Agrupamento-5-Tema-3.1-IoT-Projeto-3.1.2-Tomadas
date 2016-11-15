@@ -301,42 +301,70 @@ class Relogio {
 			return tempoEmMicrosec;
 		}
 
+		/*!
+			Método que altera a data atual.
+			\param d é a data para qual será feita a alteração.
+		*/
 		void setData(Data d) {
 			data = d;
 			cronometro->reset();
 			cronometro->start();
 		}
 
+		/*!
+			Método que altera o ano atual.
+			\param d é um inteiro que indica o ano.
+		*/
 		void setAno(int a) {
 			data.ano = a;
 			cronometro->reset();
 			cronometro->start();
 		}
 
+		/*!
+			Método que altera o mês atual.
+			\param d é um inteiro que indica o mês.
+		*/
 		void setMes(int m) {
 			data.mes= m;
 			cronometro->reset();
 			cronometro->start();
 		}
 
+		/*!
+			Método que altera o dia atual.
+			\param d é um inteiro que indica o dia.
+		*/
 		void setDia(int d) {
 			data.dia = d;
 			cronometro->reset();
 			cronometro->start();
 		}
 
+		/*!
+			Método que altera a hora atual.
+			\param d é um inteiro que indica a hora.
+		*/
 		void setHora(int h) {
 			data.hora = h;
 			cronometro->reset();
 			cronometro->start();
 		}
 
+		/*!
+			Método que altera o minuto atual.
+			\param d é um inteiro que indica o minuto.
+		*/
 		void setMinuto(int m) {
 			data.minuto = m;
 			cronometro->reset();
 			cronometro->start();
 		}
 
+		/*!
+			Método que altera o segundo atual.
+			\param d é um inteiro que indica o segundo.
+		*/
 		void setSegundo(int s) {
 			data.segundo = s;
 			cronometro->reset();
