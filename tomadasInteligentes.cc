@@ -1255,7 +1255,7 @@ class Gerente {
 		}
 
 		/*!
-			Método que calcula a quantidade de sincronizações que devem ser feitas até o fim do mês. O valor é armazenado na variável global quantidadeDeSincs.
+			Método que calcula quantos 1/4 de dia faltam para o fim do mês. O valor é armazenado na variável global quantidadeDeSincs.
 			\sa diasRestantes()
 		*/
 		void calculaQuantidadeDeSincs() {
@@ -1386,13 +1386,15 @@ class Gerente {
 			Address* addDestino = new Address(destinoDec);
 			Address meuAdd = mensageiro->obterEnderecoNIC();
 
-
-
-			if (*addDestino == meuAdd) {
-				souAlvo = true;
-			} else if (strcmp(destinoHex, "TODAS") == 0) {
+			if (strcmp(destinoHex, "TODAS") == 0) {
 				souAlvo = true;
 				todos = true;
+			} else if ((strcmp(destinoHex, "PLACA") == 0) || (*addDestino == meuAdd)) {
+				souAlvo = true;
+				todos = false;
+			} else {
+				souAlvo = false;
+				todos = false;
 			}
 
 			if (souAlvo) {
@@ -1522,7 +1524,7 @@ class Gerente {
 
 			}
 
-			//	Se a mensagem deve ser reenviada e o destinatário é todo mundo ou uma outra tomada específica.
+			//	Se a mensagem deve ser reenviada e o destinatário são todas as outras ou uma outra tomada.
 			if (reenviar && (todos || !souAlvo)) {
 				Dados dadosEnviar;
 
@@ -1589,10 +1591,10 @@ int main() {
 
 	TomadaInteligente* t = new TomadaInteligente();
 	Gerente* g = new Gerente(t);
-	t->setPrioridadeMadrugada(1);
-	t->setPrioridadeManha(2);
-	t->setPrioridadeTarde(3);
-	t->setPrioridadeNoite(4);
+	t->setPrioridadeMadrugada(5);
+	t->setPrioridadeManha(5);
+	t->setPrioridadeTarde(5);
+	t->setPrioridadeNoite(5);
 
 	g->iniciar();
 
