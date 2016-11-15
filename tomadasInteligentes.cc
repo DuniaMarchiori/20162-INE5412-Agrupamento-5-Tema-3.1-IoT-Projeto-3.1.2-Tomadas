@@ -471,16 +471,16 @@ class Led {
 		/*!
 			Método que acende o LED do EPOSMoteIII.
 		*/
-    	void acenderLED() {
-    		led->set(true);
-    	}
+		void acenderLED() {
+			led->set(true);
+		}
 
-    	/*!
+		/*!
 			Método que desliga o LED do EPOSMoteIII.
-    	*/
-    	void desligarLED() {
-    		led->set(false);
-    	}
+		*/
+		void desligarLED() {
+			led->set(false);
+		}
 };
 
 //----------------------------------------------------------------------------
@@ -759,8 +759,8 @@ class Previsor {
 				previsao += ((i+1)/somaPesos) * historico[i];
 			}
 
-        	return previsao;
-    	}
+			return previsao;
+		}
 
 		/*!
 			Método que estima o consumo de todas as tomadas juntas até o fim do mês.
