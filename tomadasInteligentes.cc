@@ -29,10 +29,10 @@ typedef NIC::Protocol Protocol;
 	Struct contendo as prioridades da tomada ao longo do dia.
 */
 struct Prioridades {
-    int madrugada; /*!< Corresponde à prioridade da tomada no horário das 00:00 (incluso) às 06:00 (não incluso). */
-    int manha; /*!< Corresponde à prioridade da tomada no horário das 06:00 (incluso) às 12:00 (não incluso). */
-    int tarde; /*!< Corresponde à prioridade da tomada no horário das 12:00 (incluso) às 18:00 (não incluso). */
-    int noite; /*!< Corresponde à prioridade da tomada no horário das 18:00 (incluso) às 00:00 (não incluso). */
+	int madrugada; /*!< Corresponde à prioridade da tomada no horário das 00:00 (incluso) às 06:00 (não incluso). */
+	int manha; /*!< Corresponde à prioridade da tomada no horário das 06:00 (incluso) às 12:00 (não incluso). */
+	int tarde; /*!< Corresponde à prioridade da tomada no horário das 12:00 (incluso) às 18:00 (não incluso). */
+	int noite; /*!< Corresponde à prioridade da tomada no horário das 18:00 (incluso) às 00:00 (não incluso). */
 };
 
 //!  Struct Dados
@@ -40,12 +40,12 @@ struct Prioridades {
 	Agrupamento dos dados que serão transmitidos e recebidos pelo EPOSMoteIII.
 */
 struct Dados {
-    Address remetente; /*!< Endereço da tomada remetente da mensagem. */
-    //bool ligada; /*!< Indica se a tomada remetente está ligada. */
-    float consumoPrevisto; /*!< Corresponde ao consumo previsto da tomada até o fim do mês. */
+	Address remetente; /*!< Endereço da tomada remetente da mensagem. */
+	//bool ligada; /*!< Indica se a tomada remetente está ligada. */
+	float consumoPrevisto; /*!< Corresponde ao consumo previsto da tomada até o fim do mês. */
 	float ultimoConsumo; /*!< Corresponde ao valor do consumo da tomada desde a ultima sincronização. */
-    int prioridade; /*!< Corresponde à prioridade da tomada no período de envio da mensagem. */
-    char configuracao[NUMERO_CHAR_CONFIG]; /*!< É uma possível configuração que precise ser feita pela tomada. */
+	int prioridade; /*!< Corresponde à prioridade da tomada no período de envio da mensagem. */
+	char configuracao[NUMERO_CHAR_CONFIG]; /*!< É uma possível configuração que precise ser feita pela tomada. */
 	bool podeDesligar; /*!< Indica se a tomada pode ser desligada no período de envio da mensagem. */
 };
 
