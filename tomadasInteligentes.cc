@@ -1270,7 +1270,7 @@ class Gerente {
 		}
 
 		/*!
-			Método que calcula quantos 1/4 de dia faltam para o fim do mês. O valor é armazenado na variável global quantidadeDeSincs.
+			Método que calcula a quantidade de sincronizações que devem ser feitas até o fim do mês. O valor é armazenado na variável global quantidadeDeSincs.
 			\sa diasRestantes()
 		*/
 		void calculaQuantidadeDeSincs() {
