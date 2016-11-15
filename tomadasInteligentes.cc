@@ -684,7 +684,7 @@ class TomadaInteligente: virtual public Tomada {
 				unsigned int rand;
 				if (consumo == 0) {
 					rand = Random::random();
-					consumo = 25 + (rand % (425-25+1));
+					consumo = 25 + (rand % (425-25+1)) / 1000.0;
 				}
 				// Aplica uma variação ao último consumo registrado, para simular um sistema real onde os valores são de certa forma consistentes.
 				rand = Random::random();
@@ -933,7 +933,11 @@ class Gerente {
 				cout << "  A previsao passa do limite." << endl;
 				mantemConsumoDentroDoLimite(); // Desliga as tomadas necessárias para manter o consumo dentro do limite.
 			} else { // Se o consumo está dentro do limite ou se a tomada não pode ser desligada
-				cout << "  A previsao esta dentro do limite. Posso ligar." << endl;
+				if (podeDesligarAtual()) {
+					cout << "  A previsao esta dentro do limite. Posso ligar." << endl;
+				} else {
+					cout << "  Estou configurada para nao desligar. Fico ligada." << endl;
+				}
 				// Liga todas as tomadas
 				if (tomada->getTipo() == 2) {
 					static_cast<TomadaMulti*>(tomada)->setDimerizacao(1);
@@ -1026,7 +1030,7 @@ class Gerente {
 			mensageiro = new Mensageiro();
 			hash = new Tabela();
 
-			maximoConsumoMensal = 12000000; //consumo máximo padrão
+			maximoConsumoMensal = 72000000; //consumo máximo padrão
 
 			consumoMensal = 0;
 			consumoProprio = 0;
@@ -1093,21 +1097,19 @@ class Gerente {
 			long long tempoDecorridoEntreCons;
 
 			// Variáveis para verificar se houve a transição no módulo do calculo do tempoDecorridoEntreSinc e do tempoDecorridoEntreCons.
-			long long ultimoTDES;
-			long long ultimoTDEC;
+			long long ultimoTDES = 0;
+			long long ultimoTDEC = 0;
 
 			while (true) {
 				data = relogio->getData();
 				tempoDecorridoEntreSinc =  ((long long) (data.minuto*60*1000000.0 + data.segundo*1000000.0 + data.microssegundos)) % tempoEntreSincs;
 				tempoDecorridoEntreCons = ((long long) (data.segundo*1000000.0 + data.microssegundos)) % tempoEntreConsumos;
 
-				// Incrementa o consumo.
-				if (tempoDecorridoEntreCons < ultimoTDEC) {
-					consumoProprio += tomada->getConsumo();
-				}
-
 				if (tempoDecorridoEntreSinc < ultimoTDES) { // Sincronizar e Administrar.
 					administrar();
+					consumoProprio += tomada->getConsumo() * (MIN_ENTRE_SINC*60) / SEGS_ENTRE_CONSUMO; // Para compensar os consumos que não foram obtidos durante a sincronização.
+				} else if (tempoDecorridoEntreCons < ultimoTDEC) { // Incrementa o consumo.
+					consumoProprio += tomada->getConsumo();
 				}
 
 				// Verifica mensagens de configuração.
@@ -1298,7 +1300,7 @@ class Gerente {
 			\return retorna um inteiro que representa qual comando foi executado.
 		*/
 		int configuracaoViaUSB() {
-			int comandoExecutado;
+			int comandoExecutado = 0;
 			if (temMsgUSB()) {
 				char strReceived[NUMERO_CHAR_CONFIG];
 				receberConfigViaUSB(strReceived);
