@@ -313,7 +313,7 @@ class Relogio {
 
 		/*!
 			Método que altera o ano atual.
-			\param d é um inteiro que indica o ano.
+			\param a é um inteiro que indica o ano.
 		*/
 		void setAno(int a) {
 			data.ano = a;
@@ -323,7 +323,7 @@ class Relogio {
 
 		/*!
 			Método que altera o mês atual.
-			\param d é um inteiro que indica o mês.
+			\param m é um inteiro que indica o mês.
 		*/
 		void setMes(int m) {
 			data.mes= m;
@@ -343,7 +343,7 @@ class Relogio {
 
 		/*!
 			Método que altera a hora atual.
-			\param d é um inteiro que indica a hora.
+			\param h é um inteiro que indica a hora.
 		*/
 		void setHora(int h) {
 			data.hora = h;
@@ -353,7 +353,7 @@ class Relogio {
 
 		/*!
 			Método que altera o minuto atual.
-			\param d é um inteiro que indica o minuto.
+			\param m é um inteiro que indica o minuto.
 		*/
 		void setMinuto(int m) {
 			data.minuto = m;
@@ -363,7 +363,7 @@ class Relogio {
 
 		/*!
 			Método que altera o segundo atual.
-			\param d é um inteiro que indica o segundo.
+			\param s é um inteiro que indica o segundo.
 		*/
 		void setSegundo(int s) {
 			data.segundo = s;
