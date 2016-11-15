@@ -234,19 +234,6 @@ class Relogio {
 		/*!
 			Método construtor da classe.
 		*/
-		/*Relogio(int a, int m, int d, int h, int min) {
-			cronometro = new Chronometer();
-			data.ano = a;
-			data.mes= m;
-			data.dia = d;
-			data.hora = h;
-			data.minuto = min;
-			data.segundo = 0;
-			data.microssegundos = 0;
-			cronometro->reset();
-			cronometro->start();
-			inicializarMeses();
-		}*/
 		Relogio() {
 			cronometro = new Chronometer();
 
