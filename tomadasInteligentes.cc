@@ -671,7 +671,7 @@ class TomadaInteligente: virtual public Tomada {
 				unsigned int rand;
 				if (consumo == 0) {
 					rand = Random::random();
-					consumo = 25 + (rand % (425-25+1)) / 1000.0;
+					consumo = (25 + (rand % (425-25+1))) / 1000.0;
 				}
 				// Aplica uma variação ao último consumo registrado, para simular um sistema real onde os valores são de certa forma consistentes.
 				rand = Random::random();
@@ -1512,7 +1512,7 @@ class Gerente {
 			}
 
 			//	Se a mensagem deve ser reenviada e o destinatário são todas as outras ou uma outra tomada.
-			if (reenviar && (todos || !souAlvo)) {
+			if ((reenviar) && (todos || (!(souAlvo)))) {
 				Dados dadosEnviar;
 
 				dadosEnviar.remetente = mensageiro->obterEnderecoNIC();
